@@ -38,6 +38,7 @@ type Action struct {
 
 func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 	var out bytes.Buffer
+	// TODO execute template on params and content
 	err = self.URLTemplate.Execute(&out, vars.NameValuePairs)
 	if err != nil {
 		return
