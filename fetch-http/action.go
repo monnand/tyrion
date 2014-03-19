@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -29,22 +30,76 @@ type ResponseReader interface {
 type Action struct {
 	URLTemplate *template.Template
 	Method      string
-	Params      url.Values
-	Content     string
+	Params      *template.Template
+	Content     *template.Template
 	ExpStatus   int
 	RespTemp    *regexp.Regexp
 	rr          ResponseReader
 }
 
-func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
+func (self *Action) getURL(vars *Env) (url string, err error) {
 	var out bytes.Buffer
-	// TODO execute template on params and content
+	if self.URLTemplate == nil {
+		err = fmt.Errorf("No URL template")
+		return
+	}
 	err = self.URLTemplate.Execute(&out, vars.NameValuePairs)
 	if err != nil {
 		return
 	}
-	url := out.String()
-	status, body, err := self.rr.ReadResponse(url, self.Method, self.Content, self.Params)
+	url = out.String()
+	return
+}
+
+func (self *Action) getParams(vars *Env) (params url.Values, err error) {
+	var out bytes.Buffer
+	if self.Params == nil {
+		return
+	}
+	err = self.Params.Execute(&out, vars.NameValuePairs)
+	if err != nil {
+		return
+	}
+	ret := make(map[string][]string, 10)
+	err = json.Unmarshal(out.Bytes(), &ret)
+	if err != nil {
+		return
+	}
+	params = ret
+	return
+}
+
+func (self *Action) getContent(vars *Env) (content string, err error) {
+	var out bytes.Buffer
+	if self.Content == nil {
+		return
+	}
+	err = self.Content.Execute(&out, vars.NameValuePairs)
+	if err != nil {
+		return
+	}
+	content = out.String()
+	return
+}
+
+func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
+	url, err := self.getURL(vars)
+	if err != nil {
+		err = fmt.Errorf("invalid URL template: %v", err)
+		return
+	}
+	params, err := self.getParams(vars)
+	if err != nil {
+		err = fmt.Errorf("invalid parameter template: %v", err)
+		return
+	}
+	content, err := self.getContent(vars)
+	if err != nil {
+		err = fmt.Errorf("invalid content template: %v", err)
+		return
+	}
+
+	status, body, err := self.rr.ReadResponse(url, self.Method, content, params)
 	if err != nil {
 		return
 	}

@@ -21,6 +21,7 @@ func newMockResponseReader(resp string, status int, err error) ResponseReader {
 
 func (self *responseReaderMock) ReadResponse(url, method, content string, params url.Values) (status int, body io.ReadCloser, err error) {
 	// TODO check the url, method, content and params
+	fmt.Printf("URL: %v\nContent:%v\nParams:%+v\n", url, content, params)
 	body = ioutil.NopCloser(bytes.NewBufferString(self.resp))
 	status = self.status
 	err = self.err
@@ -45,7 +46,10 @@ func TestPerformAction(t *testing.T) {
 	as.URLTemplate = "http://localhost:8080/{{.user}}"
 	as.Method = "GET"
 	as.RespTemp = "(?P<firstName>([a-zA-Z]+)) (?P<lastName>([a-zA-Z]+)): (?P<tel>[0-9]+)"
-	response := "Nan Deng: 666999333 Alan Turing: 9996664444"
+	as.Params = make(map[string][]string, 10)
+	as.Params["name"] = []string{"{{.user}}"}
+	as.Content = "Username: {{.user}}"
+	response := "Nan Deng: 666999333 \nAlan Turing: 9996664444"
 	rr := newMockResponseReader(response, 200, nil)
 	var env Env
 	env.NameValuePairs = make(map[string]string, 1)
@@ -65,4 +69,6 @@ func TestPerformAction(t *testing.T) {
 		t.Errorf("Only got %v updates, instead of 2", len(updates))
 		return
 	}
+	// TODO we really need a mock framework for Go
+	fmt.Printf("updates: %+v, %+v\n", updates[0].NameValuePairs, updates[1].NameValuePairs)
 }

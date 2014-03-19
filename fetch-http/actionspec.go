@@ -53,8 +53,26 @@ func (self *ActionSpec) GetAction(rr ResponseReader) (a *Action, err error) {
 			return
 		}
 	}
-	ret.Params = self.Params
-	ret.Content = self.Content
+	if len(self.Params) > 0 {
+		var paramjs []byte
+		paramjs, err = json.Marshal(self.Params)
+		if err != nil {
+			err = fmt.Errorf("%+v is cannot be encoded into json: %v", self.Params, err)
+			return
+		}
+		ret.Params, err = template.New(randomString()).Parse(string(paramjs))
+		if err != nil {
+			err = fmt.Errorf("%v is not a valid template: %v", string(paramjs), err)
+			return
+		}
+	}
+	if len(self.Content) > 0 {
+		ret.Content, err = template.New(randomString()).Parse(self.Content)
+		if err != nil {
+			err = fmt.Errorf("%v is not a valid template: %v", self.Content, err)
+			return
+		}
+	}
 	ret.ExpStatus = self.ExpStatus
 	if ret.ExpStatus < 0 {
 		ret.ExpStatus = 0
