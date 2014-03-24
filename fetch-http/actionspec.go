@@ -19,6 +19,7 @@ type ActionSpec struct {
 	Content     string              `json:"content"`
 	ExpStatus   int                 `json:"expected-status"`
 	RespTemp    string              `json:"response-template"`
+	MaxNrForks  int                 `json:"max-nr-forks"`
 }
 
 func randomString() string {
@@ -77,8 +78,9 @@ func (self *ActionSpec) GetAction(rr ResponseReader) (a *Action, err error) {
 	if ret.ExpStatus < 0 {
 		ret.ExpStatus = 0
 	}
+	ret.rr = rr
+	ret.MaxNrForks = self.MaxNrForks
 	a = ret
-	a.rr = rr
 	return
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/url"
 	"regexp"
 	"text/template"
@@ -33,6 +34,7 @@ type Action struct {
 	Params      *template.Template
 	Content     *template.Template
 	ExpStatus   int
+	MaxNrForks  int
 	RespTemp    *regexp.Regexp
 	rr          ResponseReader
 }
@@ -124,6 +126,16 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 	if len(matched) == 0 {
 		err = fmt.Errorf("URL %v: cannot find matched patterns in the response", url)
 		return
+	}
+	if self.MaxNrForks > 0 {
+		if len(matched) > self.MaxNrForks {
+			permedIdx := rand.Perm(len(matched))
+			m := make([][]string, self.MaxNrForks)
+			for i, idx := range permedIdx[:self.MaxNrForks] {
+				m[i] = matched[idx]
+			}
+			matched = m
+		}
 	}
 	var_names := self.RespTemp.SubexpNames()
 	u := make([]*Env, 0, len(matched))
