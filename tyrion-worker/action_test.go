@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"testing"
 
@@ -15,8 +16,8 @@ type responseReaderMock struct {
 	mock.Mock
 }
 
-func (self *responseReaderMock) ReadResponse(tag, url, method, content string, params url.Values) (status int, body io.ReadCloser, err error) {
-	args := self.Called(tag, url, method, content, params)
+func (self *responseReaderMock) ReadResponse(tag, url, method, content string, params url.Values, headers http.Header) (status int, body io.ReadCloser, err error) {
+	args := self.Called(tag, url, method, content, params, headers)
 	return args.Int(0), args.Get(1).(io.ReadCloser), args.Error(2)
 }
 
@@ -58,6 +59,8 @@ func TestPerformAction(t *testing.T) {
 	as.URLTemplate = "http://localhost:8080/{{.user}}"
 	as.Method = "GET"
 	as.RespTemp = "(?P<firstName>([a-zA-Z]+)) (?P<lastName>([a-zA-Z]+)): (?P<tel>[0-9]+)"
+	as.Headers = make(map[string][]string, 10)
+	as.Headers["Content-Type"] = []string{"text/text"}
 	as.Params = make(map[string][]string, 10)
 	as.Params["name"] = []string{"{{.user}}"}
 	as.Content = "Username: {{.user}}"
@@ -83,8 +86,11 @@ func TestPerformAction(t *testing.T) {
 	v := url.Values{}
 	v.Set("name", "monnand")
 
+	h := http.Header{}
+	h.Set("Content-Type", "text/text")
+
 	rr := new(responseReaderMock)
-	rr.On("ReadResponse", as.Tag, expurl, method, content, v).Return(200, ioutil.NopCloser(bytes.NewBufferString(response)), nil)
+	rr.On("ReadResponse", as.Tag, expurl, method, content, v, h).Return(200, ioutil.NopCloser(bytes.NewBufferString(response)), nil)
 	action, err := as.GetAction(rr)
 	if err != nil {
 		t.Error(err)
@@ -113,6 +119,8 @@ func TestPerformActionWithForks(t *testing.T) {
 	as.URLTemplate = "http://localhost:8080/{{.user}}"
 	as.Method = "GET"
 	as.RespTemp = "(?P<firstName>([a-zA-Z]+)) (?P<lastName>([a-zA-Z]+)): (?P<tel>[0-9]+)"
+	as.Headers = make(map[string][]string, 10)
+	as.Headers["Content-Type"] = []string{"text/text"}
 	as.Params = make(map[string][]string, 10)
 	as.Params["name"] = []string{"{{.user}}"}
 	as.MaxNrForks = 1
@@ -139,8 +147,10 @@ func TestPerformActionWithForks(t *testing.T) {
 	v := url.Values{}
 	v.Set("name", "monnand")
 
+	h := http.Header{}
+	h.Set("Content-Type", "text/text")
 	rr := new(responseReaderMock)
-	rr.On("ReadResponse", as.Tag, expurl, method, content, v).Return(200, ioutil.NopCloser(bytes.NewBufferString(response)), nil)
+	rr.On("ReadResponse", as.Tag, expurl, method, content, v, h).Return(200, ioutil.NopCloser(bytes.NewBufferString(response)), nil)
 	action, err := as.GetAction(rr)
 	if err != nil {
 		t.Error(err)

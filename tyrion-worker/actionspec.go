@@ -17,6 +17,7 @@ type ActionSpec struct {
 	URLTemplate string              `json:"url"`
 	Method      string              `json:"method"`
 	Params      map[string][]string `json:"parameters"`
+	Headers     map[string][]string `json:"headers"`
 	Content     string              `json:"content"`
 	ExpStatus   int                 `json:"expected-status"`
 	RespTemp    string              `json:"response-template"`
@@ -63,6 +64,19 @@ func (self *ActionSpec) GetAction(rr ResponseReader) (a *Action, err error) {
 			return
 		}
 		ret.Params, err = template.New(randomString()).Parse(string(paramjs))
+		if err != nil {
+			err = fmt.Errorf("%v is not a valid template: %v", string(paramjs), err)
+			return
+		}
+	}
+	if len(self.Headers) > 0 {
+		var paramjs []byte
+		paramjs, err = json.Marshal(self.Headers)
+		if err != nil {
+			err = fmt.Errorf("%+v is cannot be encoded into json: %v", self.Headers, err)
+			return
+		}
+		ret.Headers, err = template.New(randomString()).Parse(string(paramjs))
 		if err != nil {
 			err = fmt.Errorf("%v is not a valid template: %v", string(paramjs), err)
 			return

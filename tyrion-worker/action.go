@@ -7,20 +7,25 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"net/http"
 	"net/url"
 	"regexp"
 	"text/template"
 )
 
 type ResponseReader interface {
-	ReadResponse(tag, url, method, content string, params url.Values) (status int, body io.ReadCloser, err error)
+	ReadResponse(tag, url, method, content string, params url.Values, headers http.Header) (status int, body io.ReadCloser, err error)
 }
 
+// Any method of Action will never change the Action itself.
+// i.e. concurretly running any method of the same Action should be fine.
+// and the Action will not be changed after each call.
 type Action struct {
 	URLTemplate *template.Template
 	Tag         string
 	Method      string
 	Params      *template.Template
+	Headers     *template.Template
 	Content     *template.Template
 	ExpStatus   int
 	MaxNrForks  int
@@ -56,7 +61,29 @@ func (self *Action) getParams(vars *Env) (params url.Values, err error) {
 	if err != nil {
 		return
 	}
-	params = ret
+	if len(ret) > 0 {
+		params = ret
+	}
+	return
+}
+
+func (self *Action) getHeaders(vars *Env) (headers http.Header, err error) {
+	var out bytes.Buffer
+	if self.Headers == nil {
+		return
+	}
+	err = self.Headers.Execute(&out, vars.NameValuePairs)
+	if err != nil {
+		return
+	}
+	ret := make(map[string][]string, 10)
+	err = json.Unmarshal(out.Bytes(), &ret)
+	if err != nil {
+		return
+	}
+	if len(ret) > 0 {
+		headers = ret
+	}
 	return
 }
 
@@ -84,13 +111,18 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 		err = fmt.Errorf("invalid parameter template: %v", err)
 		return
 	}
+	headers, err := self.getHeaders(vars)
+	if err != nil {
+		err = fmt.Errorf("invalid header template: %v", err)
+		return
+	}
 	content, err := self.getContent(vars)
 	if err != nil {
 		err = fmt.Errorf("invalid content template: %v", err)
 		return
 	}
 
-	status, body, err := self.rr.ReadResponse(self.Tag, url, self.Method, content, params)
+	status, body, err := self.rr.ReadResponse(self.Tag, url, self.Method, content, params, headers)
 	if err != nil {
 		return
 	}
