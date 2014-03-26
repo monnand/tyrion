@@ -11,7 +11,7 @@ type Env struct {
 }
 
 func (self *Env) Fork(deltas ...*Env) []*Env {
-	merged := mergeSameEnvs(deltas...)
+	merged := uniqEnvs(deltas...)
 	if len(merged) == 0 {
 		return nil
 	}
@@ -59,8 +59,8 @@ func (self *Env) Equals(env *Env) bool {
 	return true
 }
 
-func mergeSameEnvs(envs ...*Env) []*Env {
-	var set map[string]struct{}
+func uniqEnvs(envs ...*Env) []*Env {
+	set := make(map[string]struct{}, len(envs))
 	ret := make([]*Env, 0, len(envs))
 	for _, e := range envs {
 		if e == nil {
@@ -83,7 +83,7 @@ func mergeSameEnvs(envs ...*Env) []*Env {
 }
 
 func (self *Env) Update(envs ...*Env) {
-	merged := mergeSameEnvs(envs...)
+	merged := uniqEnvs(envs...)
 	for _, env := range merged {
 		for k, v := range env.NameValuePairs {
 			self.NameValuePairs[k] = v
