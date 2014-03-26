@@ -12,18 +12,6 @@ import (
 	"text/template"
 )
 
-type Env struct {
-	NameValuePairs map[string]string
-}
-
-func (self *Env) Update(envs ...*Env) {
-	for _, env := range envs {
-		for k, v := range env.NameValuePairs {
-			self.NameValuePairs[k] = v
-		}
-	}
-}
-
 type ResponseReader interface {
 	ReadResponse(tag, url, method, content string, params url.Values) (status int, body io.ReadCloser, err error)
 }
