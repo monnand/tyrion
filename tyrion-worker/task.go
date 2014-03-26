@@ -5,12 +5,39 @@ import (
 	"sync"
 )
 
+var subTaskChan chan *subTask
+
+func init() {
+	subTaskChan = make(chan *subTask)
+}
+
+type TaskExecutor interface {
+	Execute(errChan chan<- error) []*Env
+}
+
 type TaskSpec struct {
 	Actions [][]*ActionSpec `json:"actions"`
 	InitEnv *Env            `json:"env"`
 }
 
-type Task struct {
+func (self *TaskSpec) GetWorker(rr ResponseReader) TaskExecutor {
+	ret := new(worker)
+	ret.rr = rr
+	ret.spec = self
+	ret.subTaskChan = subTaskChan
+	return ret
+}
+
+func StartWorkers(n int) {
+	if n <= 0 {
+		n = 2
+	}
+	for i := 0; i < n; i++ {
+		go subTaskExecutor(subTaskChan)
+	}
+}
+
+type worker struct {
 	subTaskChan chan<- *subTask
 	spec        *TaskSpec
 	rr          ResponseReader
@@ -37,7 +64,7 @@ func subTaskExecutor(taskChan <-chan *subTask) {
 	}
 }
 
-func (self *Task) Execute(errChan chan<- error) {
+func (self *worker) Execute(errChan chan<- error) []*Env {
 	envs := make([]*Env, 1)
 	envs[0] = self.spec.InitEnv
 
@@ -82,6 +109,7 @@ func (self *Task) Execute(errChan chan<- error) {
 			f := env.Fork(updates...)
 			forks = append(forks, f...)
 		}
-		envs = forks
+		envs = uniqEnvs(forks...)
 	}
+	return envs
 }
