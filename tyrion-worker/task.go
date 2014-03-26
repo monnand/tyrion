@@ -67,6 +67,8 @@ func subTaskExecutor(taskChan <-chan *subTask) {
 func (self *worker) Execute(errChan chan<- error) []*Env {
 	envs := make([]*Env, 1)
 	envs[0] = self.spec.InitEnv
+	var nilEnvs [1]*Env
+	nilEnvs[0] = nil
 
 	for _, concurrentActions := range self.spec.Actions {
 		nrActions := len(concurrentActions)
@@ -110,6 +112,9 @@ func (self *worker) Execute(errChan chan<- error) []*Env {
 			forks = append(forks, f...)
 		}
 		envs = uniqEnvs(forks...)
+		if len(envs) == 0 {
+			envs = nilEnvs[:]
+		}
 	}
 	return envs
 }

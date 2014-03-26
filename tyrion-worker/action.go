@@ -101,6 +101,10 @@ func (self *Action) getContent(vars *Env) (content string, err error) {
 }
 
 func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
+	if vars == nil {
+		vars = &Env{}
+		vars.NameValuePairs = make(map[string]string)
+	}
 	url, err := self.getURL(vars)
 	if err != nil {
 		err = fmt.Errorf("invalid URL template: %v", err)
@@ -126,7 +130,49 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 	if err != nil {
 		return
 	}
-	defer body.Close()
+
+	var u []*Env
+	if body != nil && self.RespTemp != nil {
+		defer body.Close()
+		var d []byte
+		d, err = ioutil.ReadAll(body)
+		if err != nil {
+			err = fmt.Errorf("URL %v: read body error. %v", url, err)
+			return
+		}
+		data := string(d)
+		matched := self.RespTemp.FindAllStringSubmatch(data, -1)
+		if len(matched) == 0 {
+			err = fmt.Errorf("URL %v: cannot find matched patterns in the response", url)
+			return
+		}
+		if self.MaxNrForks > 0 {
+			if len(matched) > self.MaxNrForks {
+				permedIdx := rand.Perm(len(matched))
+				m := make([][]string, self.MaxNrForks)
+				for i, idx := range permedIdx[:self.MaxNrForks] {
+					m[i] = matched[idx]
+				}
+				matched = m
+			}
+		}
+		var_names := self.RespTemp.SubexpNames()
+		u = make([]*Env, 0, len(matched))
+		for _, m := range matched {
+			e := new(Env)
+
+			e.NameValuePairs = make(map[string]string, len(var_names))
+			for i, v := range var_names {
+				if len(v) == 0 {
+					continue
+				}
+				e.NameValuePairs[v] = m[i]
+			}
+			if len(e.NameValuePairs) > 0 {
+				u = append(u, e)
+			}
+		}
+	}
 
 	if self.ExpStatus > 0 {
 		if self.ExpStatus != status {
@@ -135,44 +181,6 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 	}
 	if self.RespTemp == nil {
 		return
-	}
-
-	d, err := ioutil.ReadAll(body)
-	if err != nil {
-		err = fmt.Errorf("URL %v: read body error. %v", url, err)
-		return
-	}
-	data := string(d)
-	matched := self.RespTemp.FindAllStringSubmatch(data, -1)
-	if len(matched) == 0 {
-		err = fmt.Errorf("URL %v: cannot find matched patterns in the response", url)
-		return
-	}
-	if self.MaxNrForks > 0 {
-		if len(matched) > self.MaxNrForks {
-			permedIdx := rand.Perm(len(matched))
-			m := make([][]string, self.MaxNrForks)
-			for i, idx := range permedIdx[:self.MaxNrForks] {
-				m[i] = matched[idx]
-			}
-			matched = m
-		}
-	}
-	var_names := self.RespTemp.SubexpNames()
-	u := make([]*Env, 0, len(matched))
-	for _, m := range matched {
-		e := new(Env)
-
-		e.NameValuePairs = make(map[string]string, len(var_names))
-		for i, v := range var_names {
-			if len(v) == 0 {
-				continue
-			}
-			e.NameValuePairs[v] = m[i]
-		}
-		if len(e.NameValuePairs) > 0 {
-			u = append(u, e)
-		}
 	}
 
 	updates = u
