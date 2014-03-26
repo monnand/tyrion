@@ -13,6 +13,7 @@ import (
 )
 
 type ActionSpec struct {
+	Tag         string              `json:"tag"`
 	URLTemplate string              `json:"url"`
 	Method      string              `json:"method"`
 	Params      map[string][]string `json:"parameters"`
@@ -80,6 +81,7 @@ func (self *ActionSpec) GetAction(rr ResponseReader) (a *Action, err error) {
 	}
 	ret.rr = rr
 	ret.MaxNrForks = self.MaxNrForks
+	ret.Tag = self.Tag
 	a = ret
 	return
 }

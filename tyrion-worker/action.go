@@ -25,11 +25,12 @@ func (self *Env) Update(envs ...*Env) {
 }
 
 type ResponseReader interface {
-	ReadResponse(url, method, content string, params url.Values) (status int, body io.ReadCloser, err error)
+	ReadResponse(tag, url, method, content string, params url.Values) (status int, body io.ReadCloser, err error)
 }
 
 type Action struct {
 	URLTemplate *template.Template
+	Tag         string
 	Method      string
 	Params      *template.Template
 	Content     *template.Template
@@ -101,7 +102,7 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 		return
 	}
 
-	status, body, err := self.rr.ReadResponse(url, self.Method, content, params)
+	status, body, err := self.rr.ReadResponse(self.Tag, url, self.Method, content, params)
 	if err != nil {
 		return
 	}

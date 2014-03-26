@@ -15,8 +15,8 @@ type responseReaderMock struct {
 	mock.Mock
 }
 
-func (self *responseReaderMock) ReadResponse(url, method, content string, params url.Values) (status int, body io.ReadCloser, err error) {
-	args := self.Called(url, method, content, params)
+func (self *responseReaderMock) ReadResponse(tag, url, method, content string, params url.Values) (status int, body io.ReadCloser, err error) {
+	args := self.Called(tag, url, method, content, params)
 	return args.Int(0), args.Get(1).(io.ReadCloser), args.Error(2)
 }
 
@@ -61,6 +61,7 @@ func TestPerformAction(t *testing.T) {
 	as.Params = make(map[string][]string, 10)
 	as.Params["name"] = []string{"{{.user}}"}
 	as.Content = "Username: {{.user}}"
+	as.Tag = "sometag"
 	response := "Nan Deng: 666999333 \nAlan Turing: 9996664444"
 	expUpdates := make([]map[string]string, 2)
 	expUpdates[0] = make(map[string]string)
@@ -83,7 +84,7 @@ func TestPerformAction(t *testing.T) {
 	v.Set("name", "monnand")
 
 	rr := new(responseReaderMock)
-	rr.On("ReadResponse", expurl, method, content, v).Return(200, ioutil.NopCloser(bytes.NewBufferString(response)), nil)
+	rr.On("ReadResponse", as.Tag, expurl, method, content, v).Return(200, ioutil.NopCloser(bytes.NewBufferString(response)), nil)
 	action, err := as.GetAction(rr)
 	if err != nil {
 		t.Error(err)
@@ -115,6 +116,7 @@ func TestPerformActionWithForks(t *testing.T) {
 	as.Params = make(map[string][]string, 10)
 	as.Params["name"] = []string{"{{.user}}"}
 	as.MaxNrForks = 1
+	as.Tag = "sometag"
 	as.Content = "Username: {{.user}}"
 	response := "Nan Deng: 666999333 \nAlan Turing: 9996664444"
 	expUpdates := make([]map[string]string, 2)
@@ -138,7 +140,7 @@ func TestPerformActionWithForks(t *testing.T) {
 	v.Set("name", "monnand")
 
 	rr := new(responseReaderMock)
-	rr.On("ReadResponse", expurl, method, content, v).Return(200, ioutil.NopCloser(bytes.NewBufferString(response)), nil)
+	rr.On("ReadResponse", as.Tag, expurl, method, content, v).Return(200, ioutil.NopCloser(bytes.NewBufferString(response)), nil)
 	action, err := as.GetAction(rr)
 	if err != nil {
 		t.Error(err)
