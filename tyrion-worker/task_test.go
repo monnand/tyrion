@@ -118,14 +118,29 @@ func genConcurrentGetOps(kv map[string]string) []*ActionSpec {
 		spec.Params["key"] = []string{k}
 		spec.ExpStatus = 200
 		spec.RespTemp = v
-		// spec.RespTemp = "somevalue"
+		ret = append(ret, spec)
+	}
+	return ret
+}
+
+func genConcurrentGetOpsWithWrongRespTemp(kv map[string]string) []*ActionSpec {
+	ret := make([]*ActionSpec, 0, len(kv))
+	for k, v := range kv {
+		spec := new(ActionSpec)
+		spec.Tag = "get"
+		spec.URLTemplate = "http://localhost/get"
+		spec.Method = "GET"
+		spec.Params = make(map[string][]string, 2)
+		spec.Params["key"] = []string{k}
+		spec.ExpStatus = 200
+		spec.RespTemp = v + "somevalue"
 		ret = append(ret, spec)
 	}
 	return ret
 }
 
 func TestWorker(t *testing.T) {
-	N := 2
+	N := 100
 	kv := make(map[string]string, N)
 	for i := 0; i < N; i++ {
 		key := fmt.Sprintf("key%v", i)
@@ -133,7 +148,7 @@ func TestWorker(t *testing.T) {
 		kv[key] = value
 	}
 
-	StartWorkers(1)
+	StartWorkers(20)
 
 	taskSpec := new(TaskSpec)
 	actions := make([][]*ActionSpec, 0, 3)
@@ -163,4 +178,49 @@ func TestWorker(t *testing.T) {
 	worker.Execute(errChan)
 	close(errChan)
 	wg.Wait()
+}
+
+func TestWorkerOnMatchFailed(t *testing.T) {
+	N := 100
+	kv := make(map[string]string, N)
+	for i := 0; i < N; i++ {
+		key := fmt.Sprintf("key%v", i)
+		value := fmt.Sprintf("value%v", i)
+		kv[key] = value
+	}
+
+	StartWorkers(20)
+
+	taskSpec := new(TaskSpec)
+	actions := make([][]*ActionSpec, 0, 3)
+
+	a := genConcurrentSetOps(kv)
+	actions = append(actions, a)
+
+	a = genConcurrentGetOpsWithWrongRespTemp(kv)
+	actions = append(actions, a)
+
+	a = genConcurrentDelOps(kv)
+	actions = append(actions, a)
+
+	taskSpec.Actions = actions
+
+	rr := newKvStore()
+	worker := taskSpec.GetWorker(rr)
+	errChan := make(chan error)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	nrErrors := 0
+	go func() {
+		defer wg.Done()
+		for _ = range errChan {
+			nrErrors++
+		}
+	}()
+	worker.Execute(errChan)
+	close(errChan)
+	wg.Wait()
+	if nrErrors != len(kv) {
+		t.Errorf("Only received %v errors. should be %v", nrErrors, len(kv))
+	}
 }
