@@ -87,7 +87,6 @@ func (self *worker) Execute(errChan chan<- error) []*Env {
 		// reaper function
 		go func(n int) {
 			defer wg.Done()
-			fmt.Printf("Waiting for %v results\n", n)
 			for i := 0; i < n; i++ {
 				res := <-resChan
 				if res.err != nil {
@@ -100,7 +99,6 @@ func (self *worker) Execute(errChan chan<- error) []*Env {
 
 		for _, env := range envs {
 			for _, spec := range concurrentActions {
-				fmt.Printf("Tag: %v; env: %v\n", spec.Tag, env)
 				action, err := spec.GetAction(self.rr)
 				if err != nil {
 					res := new(subTaskResult)

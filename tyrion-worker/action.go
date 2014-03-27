@@ -155,7 +155,7 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 			return
 		}
 		data := string(d)
-		fmt.Printf("--RespData:\n%v\n", data)
+		// fmt.Printf("--RespData:\n%v\n", data)
 		var respPattern *regexp.Regexp
 		respPattern, err = self.getRespPattern(vars)
 		if err != nil {

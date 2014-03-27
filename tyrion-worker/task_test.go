@@ -293,7 +293,6 @@ func (self *userInfoDb) addUser(params url.Values) (status int, body io.ReadClos
 	}
 	self.profiles[userName] = profile
 	status = 200
-	fmt.Printf("Added user %v\n", userName)
 	return
 }
 
@@ -304,7 +303,6 @@ func (self *userInfoDb) listUsers(params url.Values) (status int, body io.ReadCl
 
 	var retBody bytes.Buffer
 	for k, _ := range self.profiles {
-		fmt.Printf("User: %v\n", k)
 		fmt.Fprintf(&retBody, "User: %v\n", k)
 	}
 	status = 200
@@ -347,7 +345,6 @@ func (self *userInfoDb) getUserInfo(params url.Values) (status int, body io.Read
 }
 
 func (self *userInfoDb) ReadResponse(tag, url, method, content string, params url.Values, headers http.Header) (status int, body io.ReadCloser, err error) {
-	fmt.Printf("Op: %v; params: %+v\n", tag, params)
 	switch tag {
 	case "set":
 		return self.addUser(params)
@@ -398,13 +395,13 @@ func genReadUserinfoOps() []*ActionSpec {
 }
 
 func TestForkWorkers(t *testing.T) {
-	N := 2
+	N := 200
 	users := make([]string, N)
 	for i := 0; i < N; i++ {
 		users[i] = fmt.Sprintf("user%v", i)
 	}
 
-	StartWorkers(1)
+	StartWorkers(30)
 	defer StopAllWorkers()
 
 	taskSpec := new(TaskSpec)
