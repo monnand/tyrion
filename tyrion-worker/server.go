@@ -12,6 +12,12 @@ type TaskServer struct {
 	rr ResponseReader
 }
 
+func NewTaskServer(rr ResponseReader) *TaskServer {
+	ret := new(TaskServer)
+	ret.rr = rr
+	return ret
+}
+
 func (self *TaskServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	self.ServeJson(w, r.Body)

@@ -10,6 +10,19 @@ type Env struct {
 	NameValuePairs map[string]string `json:"vars"`
 }
 
+func EmptyEnv() *Env {
+	ret := new(Env)
+	ret.NameValuePairs = make(map[string]string, 10)
+	return ret
+}
+
+func (self *Env) String() string {
+	if self == nil || len(self.NameValuePairs) == 0 {
+		return "{}"
+	}
+	return fmt.Sprintf("%+v", self.NameValuePairs)
+}
+
 func (self *Env) Fork(deltas ...*Env) []*Env {
 	merged := uniqEnvs(deltas...)
 	if len(merged) == 0 {
@@ -26,10 +39,10 @@ func (self *Env) Fork(deltas ...*Env) []*Env {
 
 func (self *Env) Clone() *Env {
 	if self == nil {
-		return nil
+		return EmptyEnv()
 	}
 	if len(self.NameValuePairs) == 0 {
-		return nil
+		return EmptyEnv()
 	}
 	ret := new(Env)
 	ret.NameValuePairs = make(map[string]string, len(self.NameValuePairs))

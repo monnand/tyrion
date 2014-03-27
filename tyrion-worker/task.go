@@ -37,6 +37,11 @@ func StartWorkers(n int) {
 	}
 }
 
+func StopAllWorkers() {
+	close(subTaskChan)
+	subTaskChan = make(chan *subTask)
+}
+
 type worker struct {
 	subTaskChan chan<- *subTask
 	spec        *TaskSpec
@@ -75,13 +80,14 @@ func (self *worker) Execute(errChan chan<- error) []*Env {
 		if nrActions == 0 {
 			continue
 		}
-		updates := make([]*Env, 0, nrActions*2)
 		resChan := make(chan *subTaskResult)
+		updates := make([]*Env, 0, nrActions*2)
 		var wg sync.WaitGroup
 		wg.Add(1)
 		// reaper function
 		go func(n int) {
 			defer wg.Done()
+			fmt.Printf("Waiting for %v results\n", n)
 			for i := 0; i < n; i++ {
 				res := <-resChan
 				if res.err != nil {
@@ -90,12 +96,16 @@ func (self *worker) Execute(errChan chan<- error) []*Env {
 				}
 				updates = append(updates, res.updates...)
 			}
-		}(nrActions)
+		}(nrActions * len(envs))
+
 		for _, env := range envs {
 			for _, spec := range concurrentActions {
+				fmt.Printf("Tag: %v; env: %v\n", spec.Tag, env)
 				action, err := spec.GetAction(self.rr)
 				if err != nil {
-					errChan <- fmt.Errorf("Action %v is invalid: %v", action.Tag, err)
+					res := new(subTaskResult)
+					res.err = fmt.Errorf("Action %v is invalid: %v", spec.Tag, err)
+					resChan <- res
 					continue
 				}
 				st := new(subTask)

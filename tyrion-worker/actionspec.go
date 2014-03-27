@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -50,7 +49,7 @@ func (self *ActionSpec) GetAction(rr ResponseReader) (a *Action, err error) {
 		return
 	}
 	if len(self.RespTemp) > 0 {
-		ret.RespTemp, err = regexp.Compile(self.RespTemp)
+		ret.RespTemp, err = template.New(randomString()).Parse(self.RespTemp)
 		if err != nil {
 			err = fmt.Errorf("%v is not valid regexp: %v", self.RespTemp, err)
 			return

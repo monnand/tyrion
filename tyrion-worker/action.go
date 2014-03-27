@@ -29,7 +29,7 @@ type Action struct {
 	Content     *template.Template
 	ExpStatus   int
 	MaxNrForks  int
-	RespTemp    *regexp.Regexp
+	RespTemp    *template.Template
 	rr          ResponseReader
 }
 
@@ -100,10 +100,24 @@ func (self *Action) getContent(vars *Env) (content string, err error) {
 	return
 }
 
+func (self *Action) getRespPattern(vars *Env) (resp *regexp.Regexp, err error) {
+	if self.RespTemp == nil {
+		resp = nil
+		return
+	}
+	var out bytes.Buffer
+	// FIXME This is dangours! Need to escape first
+	err = self.RespTemp.Execute(&out, vars.NameValuePairs)
+	if err != nil {
+		return
+	}
+	resp, err = regexp.Compile(out.String())
+	return
+}
+
 func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 	if vars == nil {
-		vars = &Env{}
-		vars.NameValuePairs = make(map[string]string)
+		vars = EmptyEnv()
 	}
 	url, err := self.getURL(vars)
 	if err != nil {
@@ -141,35 +155,44 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 			return
 		}
 		data := string(d)
-		matched := self.RespTemp.FindAllStringSubmatch(data, -1)
-		if len(matched) == 0 {
-			err = fmt.Errorf("URL %v: cannot find matched patterns in the response", url)
+		fmt.Printf("--RespData:\n%v\n", data)
+		var respPattern *regexp.Regexp
+		respPattern, err = self.getRespPattern(vars)
+		if err != nil {
+			err = fmt.Errorf("Tag=%v URL=%v %v", self.Tag, url, err)
 			return
 		}
-		if self.MaxNrForks > 0 {
-			if len(matched) > self.MaxNrForks {
-				permedIdx := rand.Perm(len(matched))
-				m := make([][]string, self.MaxNrForks)
-				for i, idx := range permedIdx[:self.MaxNrForks] {
-					m[i] = matched[idx]
-				}
-				matched = m
+		if respPattern != nil {
+			matched := respPattern.FindAllStringSubmatch(data, -1)
+			if len(matched) == 0 {
+				err = fmt.Errorf("URL %v: cannot find matched patterns in the response", url)
+				return
 			}
-		}
-		var_names := self.RespTemp.SubexpNames()
-		u = make([]*Env, 0, len(matched))
-		for _, m := range matched {
-			e := new(Env)
+			if self.MaxNrForks > 0 {
+				if len(matched) > self.MaxNrForks {
+					permedIdx := rand.Perm(len(matched))
+					m := make([][]string, self.MaxNrForks)
+					for i, idx := range permedIdx[:self.MaxNrForks] {
+						m[i] = matched[idx]
+					}
+					matched = m
+				}
+			}
+			var_names := respPattern.SubexpNames()
+			u = make([]*Env, 0, len(matched))
+			for _, m := range matched {
+				e := new(Env)
 
-			e.NameValuePairs = make(map[string]string, len(var_names))
-			for i, v := range var_names {
-				if len(v) == 0 {
-					continue
+				e.NameValuePairs = make(map[string]string, len(var_names))
+				for i, v := range var_names {
+					if len(v) == 0 {
+						continue
+					}
+					e.NameValuePairs[v] = m[i]
 				}
-				e.NameValuePairs[v] = m[i]
-			}
-			if len(e.NameValuePairs) > 0 {
-				u = append(u, e)
+				if len(e.NameValuePairs) > 0 {
+					u = append(u, e)
+				}
 			}
 		}
 	}
