@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -16,9 +15,9 @@ type responseReaderMock struct {
 	mock.Mock
 }
 
-func (self *responseReaderMock) ReadResponse(tag, url, method, content string, params url.Values, headers http.Header) (status int, body io.ReadCloser, err error) {
-	args := self.Called(tag, url, method, content, params, headers)
-	return args.Int(0), args.Get(1).(io.ReadCloser), args.Error(2)
+func (self *responseReaderMock) ReadResponse(req *Request, env *Env) (resp *Response, updates *Env, err error) {
+	args := self.Called(req, env)
+	return args.Get(0).(*Response), args.Get(1).(*Env), args.Error(2)
 }
 
 func envHasValues(env *Env, vals map[string]string) error {
@@ -90,7 +89,19 @@ func TestPerformAction(t *testing.T) {
 	h.Set("Content-Type", "text/text")
 
 	rr := new(responseReaderMock)
-	rr.On("ReadResponse", as.Tag, expurl, method, content, v, h).Return(200, ioutil.NopCloser(bytes.NewBufferString(response)), nil)
+	req := &Request{
+		Tag:     as.Tag,
+		URL:     expurl,
+		Method:  method,
+		Content: content,
+		Params:  v,
+		Headers: h,
+	}
+	resp := &Response{
+		Status: 200,
+		Body:   ioutil.NopCloser(bytes.NewBufferString(response)),
+	}
+	rr.On("ReadResponse", req, &env).Return(resp, &Env{}, nil)
 	action, err := as.GetAction(rr)
 	if err != nil {
 		t.Error(err)
@@ -150,7 +161,19 @@ func TestPerformActionWithForks(t *testing.T) {
 	h := http.Header{}
 	h.Set("Content-Type", "text/text")
 	rr := new(responseReaderMock)
-	rr.On("ReadResponse", as.Tag, expurl, method, content, v, h).Return(200, ioutil.NopCloser(bytes.NewBufferString(response)), nil)
+	req := &Request{
+		Tag:     as.Tag,
+		URL:     expurl,
+		Method:  method,
+		Content: content,
+		Params:  v,
+		Headers: h,
+	}
+	resp := &Response{
+		Status: 200,
+		Body:   ioutil.NopCloser(bytes.NewBufferString(response)),
+	}
+	rr.On("ReadResponse", req, &env).Return(resp, &Env{}, nil)
 	action, err := as.GetAction(rr)
 	if err != nil {
 		t.Error(err)

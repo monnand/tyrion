@@ -16,6 +16,10 @@ func EmptyEnv() *Env {
 	return ret
 }
 
+func (self *Env) IsEmpty() bool {
+	return self == nil || len(self.NameValuePairs) == 0
+}
+
 func (self *Env) String() string {
 	if self == nil || len(self.NameValuePairs) == 0 {
 		return "{}"

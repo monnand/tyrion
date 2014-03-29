@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"net/url"
 	"sync"
 	"testing"
@@ -23,7 +22,11 @@ func newKvStore() ResponseReader {
 	return ret
 }
 
-func (self *kvStoreResponseReader) ReadResponse(tag, url, method, content string, params url.Values, headers http.Header) (status int, body io.ReadCloser, err error) {
+func (self *kvStoreResponseReader) ReadResponse(req *Request, env *Env) (resp *Response, updates *Env, err error) {
+	method := req.Method
+	params := req.Params
+
+	status := 404
 	var key string
 	if keys, ok := params["key"]; ok && len(keys) > 0 {
 		key = keys[0]
@@ -65,8 +68,11 @@ func (self *kvStoreResponseReader) ReadResponse(tag, url, method, content string
 		self.lock.RLock()
 		defer self.lock.RUnlock()
 		if v, ok := self.store[key]; ok {
-			body = ioutil.NopCloser(bytes.NewBufferString(v))
+			body := ioutil.NopCloser(bytes.NewBufferString(v))
 			status = 200
+			resp = new(Response)
+			resp.Body = body
+			resp.Status = status
 		} else {
 			err = fmt.Errorf("get a non-exist key %v", key)
 			status = 404
@@ -344,17 +350,22 @@ func (self *userInfoDb) getUserInfo(params url.Values) (status int, body io.Read
 	return
 }
 
-func (self *userInfoDb) ReadResponse(tag, url, method, content string, params url.Values, headers http.Header) (status int, body io.ReadCloser, err error) {
+func (self *userInfoDb) ReadResponse(req *Request, env *Env) (resp *Response, updates *Env, err error) {
+	tag := req.Tag
+	params := req.Params
+	var ret Response
 	switch tag {
 	case "set":
-		return self.addUser(params)
+		ret.Status, ret.Body, err = self.addUser(params)
 	case "get":
-		return self.getUserInfo(params)
+		ret.Status, ret.Body, err = self.getUserInfo(params)
 	case "list":
-		return self.listUsers(params)
+		ret.Status, ret.Body, err = self.listUsers(params)
 	default:
 		err = fmt.Errorf("Unknown tag: %v", tag)
-		status = 404
+	}
+	if err == nil {
+		resp = &ret
 	}
 	return
 }

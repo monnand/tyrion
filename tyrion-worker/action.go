@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -13,9 +12,11 @@ import (
 	"text/template"
 )
 
+/*
 type ResponseReader interface {
 	ReadResponse(tag, url, method, content string, params url.Values, headers http.Header) (status int, body io.ReadCloser, err error)
 }
+*/
 
 // Any method of Action will never change the Action itself.
 // i.e. concurretly running any method of the same Action should be fine.
@@ -140,13 +141,23 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 		return
 	}
 
-	status, body, err := self.rr.ReadResponse(self.Tag, url, self.Method, content, params, headers)
+	req := &Request{
+		Tag:     self.Tag,
+		URL:     url,
+		Method:  self.Method,
+		Content: content,
+		Params:  params,
+		Headers: headers,
+	}
+
+	resp, rupdates, err := self.rr.ReadResponse(req, vars)
 	if err != nil {
 		return
 	}
 
 	var u []*Env
-	if body != nil && self.RespTemp != nil {
+	if resp != nil && resp.Body != nil && self.RespTemp != nil {
+		body := resp.Body
 		defer body.Close()
 		var d []byte
 		d, err = ioutil.ReadAll(body)
@@ -191,19 +202,26 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 					e.NameValuePairs[v] = m[i]
 				}
 				if len(e.NameValuePairs) > 0 {
+					e.Update(rupdates)
 					u = append(u, e)
 				}
 			}
 		}
 	}
 
-	if self.ExpStatus > 0 {
-		if self.ExpStatus != status {
-			err = fmt.Errorf("Reuqest URL %v, expected status code %v, but received %v", url, self.ExpStatus, status)
+	if self.ExpStatus > 0 && resp != nil {
+		if self.ExpStatus != resp.Status {
+			err = fmt.Errorf("Reuqest URL %v, expected status code %v, but received %v", url, self.ExpStatus, resp.Status)
 		}
 	}
 	if self.RespTemp == nil {
 		return
+	}
+
+	if len(u) == 0 {
+		if !rupdates.IsEmpty() {
+			u = append(u, rupdates)
+		}
 	}
 
 	updates = u
