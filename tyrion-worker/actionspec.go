@@ -12,7 +12,7 @@ import (
 )
 
 type ActionSpec struct {
-	Debug       string              `json:"debug"`
+	Debug       bool                `json:"debug"`
 	Tag         string              `json:"tag"`
 	URLTemplate string              `json:"url"`
 	Method      string              `json:"method"`
@@ -21,6 +21,7 @@ type ActionSpec struct {
 	Content     string              `json:"content"`
 	ExpStatus   int                 `json:"expected-status"`
 	RespTemp    string              `json:"response-template"`
+	MustMatch   bool                `json:"must-match"`
 	MaxNrForks  int                 `json:"max-nr-forks"`
 }
 
@@ -96,9 +97,14 @@ func (self *ActionSpec) GetAction(rr ResponseReader) (a *Action, err error) {
 	ret.rr = rr
 	ret.MaxNrForks = self.MaxNrForks
 	ret.Tag = self.Tag
-	if self.Debug == "true" || self.Debug == "True" {
-		ret.Debug = true
-	}
+	/*
+		if self.Debug == "true" || self.Debug == "True" {
+			ret.Debug = true
+		}
+	*/
+
+	ret.Debug = self.Debug
+	ret.MustMatch = self.MustMatch
 	a = ret
 	return
 }

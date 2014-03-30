@@ -32,6 +32,7 @@ type Action struct {
 	ExpStatus   int
 	MaxNrForks  int
 	RespTemp    *template.Template
+	MustMatch   bool
 	rr          ResponseReader
 }
 
@@ -176,7 +177,7 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 		}
 		if respPattern != nil {
 			matched := respPattern.FindAllStringSubmatch(data, -1)
-			if len(matched) == 0 {
+			if len(matched) == 0 && self.MustMatch {
 				err = fmt.Errorf("URL %v: cannot find matched patterns in the response", url)
 				return
 			}
