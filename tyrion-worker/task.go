@@ -15,9 +15,14 @@ type TaskExecutor interface {
 	Execute(errChan chan<- error) []*Env
 }
 
+type ConcurrentActions struct {
+	Actions             []*ActionSpec `json:"actions"`
+	ProceedWhenNoUpdate bool          `json:"proceed-when-no-update"`
+}
+
 type TaskSpec struct {
-	Actions [][]*ActionSpec `json:"actions"`
-	InitEnv *Env            `json:"env"`
+	ConcurrentActions []*ConcurrentActions `json:"concurrent-actions"`
+	InitEnv           *Env                 `json:"env"`
 }
 
 func (self *TaskSpec) GetWorker(rr ResponseReader) TaskExecutor {
@@ -72,11 +77,14 @@ func subTaskExecutor(taskChan <-chan *subTask) {
 func (self *worker) Execute(errChan chan<- error) []*Env {
 	envs := make([]*Env, 1)
 	envs[0] = self.spec.InitEnv
+	if envs[0].IsEmpty() {
+		envs[0] = EmptyEnv()
+	}
 	var nilEnvs [1]*Env
-	nilEnvs[0] = nil
+	nilEnvs[0] = EmptyEnv()
 
-	for _, concurrentActions := range self.spec.Actions {
-		nrActions := len(concurrentActions)
+	for _, concurrentActions := range self.spec.ConcurrentActions {
+		nrActions := len(concurrentActions.Actions)
 		if nrActions == 0 {
 			continue
 		}
@@ -98,7 +106,7 @@ func (self *worker) Execute(errChan chan<- error) []*Env {
 		}(nrActions * len(envs))
 
 		for _, env := range envs {
-			for _, spec := range concurrentActions {
+			for _, spec := range concurrentActions.Actions {
 				action, err := spec.GetAction(self.rr)
 				if err != nil {
 					res := new(subTaskResult)
@@ -114,6 +122,9 @@ func (self *worker) Execute(errChan chan<- error) []*Env {
 			}
 		}
 		wg.Wait()
+		if len(updates) == 0 && !concurrentActions.ProceedWhenNoUpdate {
+			break
+		}
 		forks := make([]*Env, 0, len(envs)*len(updates))
 		for _, env := range envs {
 			f := env.Fork(updates...)

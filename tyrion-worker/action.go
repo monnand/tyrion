@@ -182,7 +182,7 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 				return
 			}
 			if self.Debug {
-				fmt.Printf("\n[DEBUG MESSAGE BEGIN]\n\tReq=%+v\n\tResponse: %v\n\tMatched: %+v\n[DEBUG MESSAGE END]\n", req, data, matched)
+				fmt.Printf("\n[DEBUG MESSAGE BEGIN]\n\tReq=%+v\n\tMatched: %+v\n[DEBUG MESSAGE END]\n", req, matched)
 			}
 			if self.MaxNrForks > 0 {
 				if len(matched) > self.MaxNrForks {

@@ -16,6 +16,12 @@ type kvStoreResponseReader struct {
 	lock  sync.RWMutex
 }
 
+func (self *kvStoreResponseReader) Size() int {
+	self.lock.RLock()
+	defer self.lock.RUnlock()
+	return len(self.store)
+}
+
 func newKvStore() ResponseReader {
 	ret := new(kvStoreResponseReader)
 	ret.store = make(map[string]string, 10)
@@ -82,7 +88,9 @@ func (self *kvStoreResponseReader) ReadResponse(req *Request, env *Env) (resp *R
 	return
 }
 
-func genConcurrentSetOps(kv map[string]string) []*ActionSpec {
+func genConcurrentSetOps(kv map[string]string) *ConcurrentActions {
+	ca := new(ConcurrentActions)
+	ca.ProceedWhenNoUpdate = true
 	ret := make([]*ActionSpec, 0, len(kv))
 	for k, v := range kv {
 		spec := new(ActionSpec)
@@ -95,10 +103,13 @@ func genConcurrentSetOps(kv map[string]string) []*ActionSpec {
 		spec.ExpStatus = 200
 		ret = append(ret, spec)
 	}
-	return ret
+	ca.Actions = ret
+	return ca
 }
 
-func genConcurrentDelOps(kv map[string]string) []*ActionSpec {
+func genConcurrentDelOps(kv map[string]string) *ConcurrentActions {
+	ca := new(ConcurrentActions)
+	ca.ProceedWhenNoUpdate = true
 	ret := make([]*ActionSpec, 0, len(kv))
 	for k, _ := range kv {
 		spec := new(ActionSpec)
@@ -110,10 +121,13 @@ func genConcurrentDelOps(kv map[string]string) []*ActionSpec {
 		spec.ExpStatus = 200
 		ret = append(ret, spec)
 	}
-	return ret
+	ca.Actions = ret
+	return ca
 }
 
-func genConcurrentGetOps(kv map[string]string) []*ActionSpec {
+func genConcurrentGetOps(kv map[string]string) *ConcurrentActions {
+	ca := new(ConcurrentActions)
+	ca.ProceedWhenNoUpdate = true
 	ret := make([]*ActionSpec, 0, len(kv))
 	for k, v := range kv {
 		spec := new(ActionSpec)
@@ -124,12 +138,16 @@ func genConcurrentGetOps(kv map[string]string) []*ActionSpec {
 		spec.Params["key"] = []string{k}
 		spec.ExpStatus = 200
 		spec.RespTemp = v
+		spec.MustMatch = true
 		ret = append(ret, spec)
 	}
-	return ret
+	ca.Actions = ret
+	return ca
 }
 
-func genConcurrentGetOpsWithWrongRespTemp(kv map[string]string) []*ActionSpec {
+func genConcurrentGetOpsWithWrongRespTemp(kv map[string]string) *ConcurrentActions {
+	ca := new(ConcurrentActions)
+	ca.ProceedWhenNoUpdate = true
 	ret := make([]*ActionSpec, 0, len(kv))
 	for k, v := range kv {
 		spec := new(ActionSpec)
@@ -140,12 +158,14 @@ func genConcurrentGetOpsWithWrongRespTemp(kv map[string]string) []*ActionSpec {
 		spec.Params["key"] = []string{k}
 		spec.ExpStatus = 200
 		spec.RespTemp = v + "somevalue"
+		spec.MustMatch = true
 		ret = append(ret, spec)
 	}
-	return ret
+	ca.Actions = ret
+	return ca
 }
 
-func TestWorker(t *testing.T) {
+func TestKeyValueStoreWorkers(t *testing.T) {
 	N := 100
 	kv := make(map[string]string, N)
 	for i := 0; i < N; i++ {
@@ -158,7 +178,7 @@ func TestWorker(t *testing.T) {
 	defer StopAllWorkers()
 
 	taskSpec := new(TaskSpec)
-	actions := make([][]*ActionSpec, 0, 3)
+	actions := make([]*ConcurrentActions, 0, 3)
 
 	a := genConcurrentSetOps(kv)
 	actions = append(actions, a)
@@ -169,7 +189,7 @@ func TestWorker(t *testing.T) {
 	a = genConcurrentDelOps(kv)
 	actions = append(actions, a)
 
-	taskSpec.Actions = actions
+	taskSpec.ConcurrentActions = actions
 
 	rr := newKvStore()
 	worker := taskSpec.GetWorker(rr)
@@ -185,6 +205,13 @@ func TestWorker(t *testing.T) {
 	worker.Execute(errChan)
 	close(errChan)
 	wg.Wait()
+	if kvrr, ok := rr.(*kvStoreResponseReader); ok {
+		if kvrr.Size() != 0 {
+			t.Errorf("Still have %v elements in the storage", kvrr.Size())
+		}
+	} else {
+		t.Errorf("not a kvStoreResponseReader")
+	}
 }
 
 func TestWorkerOnMatchFailed(t *testing.T) {
@@ -200,7 +227,7 @@ func TestWorkerOnMatchFailed(t *testing.T) {
 	defer StopAllWorkers()
 
 	taskSpec := new(TaskSpec)
-	actions := make([][]*ActionSpec, 0, 3)
+	actions := make([]*ConcurrentActions, 0, 3)
 
 	a := genConcurrentSetOps(kv)
 	actions = append(actions, a)
@@ -211,7 +238,7 @@ func TestWorkerOnMatchFailed(t *testing.T) {
 	a = genConcurrentDelOps(kv)
 	actions = append(actions, a)
 
-	taskSpec.Actions = actions
+	taskSpec.ConcurrentActions = actions
 
 	rr := newKvStore()
 	worker := taskSpec.GetWorker(rr)
@@ -370,7 +397,10 @@ func (self *userInfoDb) ReadResponse(req *Request, env *Env) (resp *Response, up
 	return
 }
 
-func genConcurrentAddUserOps(users []string) []*ActionSpec {
+func genConcurrentAddUserOps(users []string) *ConcurrentActions {
+	ca := new(ConcurrentActions)
+	ca.ProceedWhenNoUpdate = true
+
 	ret := make([]*ActionSpec, 0, len(users))
 	for _, u := range users {
 		a := new(ActionSpec)
@@ -381,19 +411,25 @@ func genConcurrentAddUserOps(users []string) []*ActionSpec {
 		a.Params["somekey"] = []string{"something"}
 		ret = append(ret, a)
 	}
-	return ret
+	ca.Actions = ret
+	return ca
 }
 
-func genListUserOp() []*ActionSpec {
+func genListUserOp() *ConcurrentActions {
+	ca := new(ConcurrentActions)
+	ca.ProceedWhenNoUpdate = false
 	ret := make([]*ActionSpec, 1)
 	ret[0] = new(ActionSpec)
 	ret[0].Tag = "list"
 	ret[0].Method = "GET"
 	ret[0].RespTemp = "User:\\s*(?P<username>([a-zA-Z0-9]+))"
-	return ret
+	ca.Actions = ret
+	return ca
 }
 
-func genReadUserinfoOps() []*ActionSpec {
+func genReadUserinfoOps() *ConcurrentActions {
+	ca := new(ConcurrentActions)
+	ca.ProceedWhenNoUpdate = true
 	ret := make([]*ActionSpec, 1)
 	ret[0] = new(ActionSpec)
 	ret[0].Tag = "get"
@@ -402,7 +438,8 @@ func genReadUserinfoOps() []*ActionSpec {
 	ret[0].Params["user"] = []string{"{{.username}}"}
 	ret[0].Params["info"] = []string{"name"}
 	ret[0].RespTemp = "{{.username}}"
-	return ret
+	ca.Actions = ret
+	return ca
 }
 
 func TestForkWorkers(t *testing.T) {
@@ -416,7 +453,7 @@ func TestForkWorkers(t *testing.T) {
 	defer StopAllWorkers()
 
 	taskSpec := new(TaskSpec)
-	actions := make([][]*ActionSpec, 0, 3)
+	actions := make([]*ConcurrentActions, 0, 3)
 
 	a := genConcurrentAddUserOps(users)
 	actions = append(actions, a)
@@ -427,7 +464,7 @@ func TestForkWorkers(t *testing.T) {
 	a = genReadUserinfoOps()
 	actions = append(actions, a)
 
-	taskSpec.Actions = actions
+	taskSpec.ConcurrentActions = actions
 
 	rr := newUserInfoDb()
 	worker := taskSpec.GetWorker(rr)
