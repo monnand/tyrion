@@ -22,6 +22,7 @@ type ResponseReader interface {
 // i.e. concurretly running any method of the same Action should be fine.
 // and the Action will not be changed after each call.
 type Action struct {
+	Debug       bool
 	URLTemplate *template.Template
 	Tag         string
 	Method      string
@@ -112,7 +113,8 @@ func (self *Action) getRespPattern(vars *Env) (resp *regexp.Regexp, err error) {
 	if err != nil {
 		return
 	}
-	resp, err = regexp.Compile(out.String())
+	pattern := out.String()
+	resp, err = regexp.Compile(pattern)
 	return
 }
 
@@ -166,7 +168,6 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 			return
 		}
 		data := string(d)
-		// fmt.Printf("--RespData:\n%v\n", data)
 		var respPattern *regexp.Regexp
 		respPattern, err = self.getRespPattern(vars)
 		if err != nil {
@@ -178,6 +179,9 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 			if len(matched) == 0 {
 				err = fmt.Errorf("URL %v: cannot find matched patterns in the response", url)
 				return
+			}
+			if self.Debug {
+				fmt.Printf("\n[DEBUG MESSAGE BEGIN]\n\tReq=%+v\n\tResponse: %v\n\tMatched: %+v\n[DEBUG MESSAGE END]\n", req, data, matched)
 			}
 			if self.MaxNrForks > 0 {
 				if len(matched) > self.MaxNrForks {

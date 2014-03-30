@@ -29,6 +29,14 @@ type taskResult struct {
 }
 
 func (self *TaskServer) ServeJson(w io.Writer, r io.Reader) {
+	decoder := json.NewDecoder(r)
+	var taskSpec TaskSpec
+	err := decoder.Decode(&taskSpec)
+
+	if err != nil {
+		fmt.Fprintf(w, `{"errors": "%v"}`, err)
+		return
+	}
 	errChan := make(chan error)
 	var tr taskResult
 	var wg sync.WaitGroup
@@ -42,9 +50,6 @@ func (self *TaskServer) ServeJson(w io.Writer, r io.Reader) {
 			}
 		}
 	}()
-	decoder := json.NewDecoder(r)
-	var taskSpec TaskSpec
-	decoder.Decode(&taskSpec)
 	task := taskSpec.GetWorker(self.rr)
 	envs := task.Execute(errChan)
 	close(errChan)
