@@ -24,7 +24,7 @@ func (self *TaskServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type taskResult struct {
-	Errors []string `json:"errors"`
+	Errors []string `json:"errors,omitempty"`
 	Envs   []*Env   `json:"envs"`
 }
 
