@@ -24,7 +24,7 @@ type ResponseReader interface {
 type Action struct {
 	Debug       bool
 	URLTemplate *template.Template
-	Tag         string
+	Tag         *template.Template
 	Method      string
 	Params      *template.Template
 	Headers     *template.Template
@@ -90,6 +90,19 @@ func (self *Action) getHeaders(vars *Env) (headers http.Header, err error) {
 	return
 }
 
+func (self *Action) getTag(vars *Env) (tag string, err error) {
+	var out bytes.Buffer
+	if self.Tag == nil {
+		return
+	}
+	err = self.Tag.Execute(&out, vars.NameValuePairs)
+	if err != nil {
+		return
+	}
+	tag = out.String()
+	return
+}
+
 func (self *Action) getContent(vars *Env) (content string, err error) {
 	var out bytes.Buffer
 	if self.Content == nil {
@@ -143,9 +156,14 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 		err = fmt.Errorf("invalid content template: %v", err)
 		return
 	}
+	tag, err := self.getTag(vars)
+	if err != nil {
+		err = fmt.Errorf("invalid tag template: %v", err)
+		return
+	}
 
 	req := &Request{
-		Tag:     self.Tag,
+		Tag:     tag,
 		URL:     url,
 		Method:  self.Method,
 		Content: content,

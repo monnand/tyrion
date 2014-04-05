@@ -90,13 +90,22 @@ func (self *ActionSpec) GetAction(rr ResponseReader) (a *Action, err error) {
 			return
 		}
 	}
+	if len(self.Tag) > 0 {
+		ret.Tag, err = template.New(randomString()).Parse(self.Tag)
+		if err != nil {
+			err = fmt.Errorf("%v is not a valid template: %v", self.Tag, err)
+			return
+		}
+	} else {
+		err = fmt.Errorf("Action needs a tag to identify itself")
+		return
+	}
 	ret.ExpStatus = self.ExpStatus
 	if ret.ExpStatus < 0 {
 		ret.ExpStatus = 0
 	}
 	ret.rr = rr
 	ret.MaxNrForks = self.MaxNrForks
-	ret.Tag = self.Tag
 	/*
 		if self.Debug == "true" || self.Debug == "True" {
 			ret.Debug = true
