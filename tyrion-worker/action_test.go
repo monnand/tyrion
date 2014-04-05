@@ -20,6 +20,10 @@ func (self *responseReaderMock) ReadResponse(req *Request, env *Env) (resp *Resp
 	return args.Get(0).(*Response), args.Get(1).(*Env), args.Error(2)
 }
 
+func (self *responseReaderMock) Close() error {
+	return nil
+}
+
 func envHasValues(env *Env, vals map[string]string) error {
 	for k, v := range vals {
 		if value, ok := env.NameValuePairs[k]; ok {

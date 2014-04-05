@@ -9,12 +9,10 @@ import (
 )
 
 type TaskServer struct {
-	rr ResponseReader
 }
 
-func NewTaskServer(rr ResponseReader) *TaskServer {
-	ret := new(TaskServer)
-	ret.rr = rr
+func NewTaskServer() *TaskServer {
+	ret := &TaskServer{}
 	return ret
 }
 
@@ -50,8 +48,13 @@ func (self *TaskServer) ServeJson(w io.Writer, r io.Reader) {
 			}
 		}
 	}()
-	task := taskSpec.GetWorker(self.rr)
-	envs := task.Execute(errChan)
+	task, err := taskSpec.GetWorker(nil)
+	var envs []*Env
+	if err != nil {
+		errChan <- err
+	} else {
+		envs = task.Execute(errChan)
+	}
 	close(errChan)
 	wg.Wait()
 

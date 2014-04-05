@@ -16,6 +16,10 @@ type kvStoreResponseReader struct {
 	lock  sync.RWMutex
 }
 
+func (self *kvStoreResponseReader) Close() error {
+	return nil
+}
+
 func (self *kvStoreResponseReader) Size() int {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
@@ -192,7 +196,7 @@ func TestKeyValueStoreWorkers(t *testing.T) {
 	taskSpec.ConcurrentActions = actions
 
 	rr := newKvStore()
-	worker := taskSpec.GetWorker(rr)
+	worker, _ := taskSpec.GetWorker(rr)
 	errChan := make(chan error)
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -241,7 +245,7 @@ func TestWorkerOnMatchFailed(t *testing.T) {
 	taskSpec.ConcurrentActions = actions
 
 	rr := newKvStore()
-	worker := taskSpec.GetWorker(rr)
+	worker, _ := taskSpec.GetWorker(rr)
 	errChan := make(chan error)
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -268,6 +272,7 @@ type userProfile struct {
 type userInfoDb struct {
 	profiles map[string]*userProfile
 	lock     sync.RWMutex
+	closer
 }
 
 func newUserInfoDb() ResponseReader {
@@ -467,7 +472,7 @@ func TestForkWorkers(t *testing.T) {
 	taskSpec.ConcurrentActions = actions
 
 	rr := newUserInfoDb()
-	worker := taskSpec.GetWorker(rr)
+	worker, _ := taskSpec.GetWorker(rr)
 	errChan := make(chan error)
 	var wg sync.WaitGroup
 	wg.Add(1)

@@ -22,4 +22,12 @@ type Response struct {
 
 type ResponseReader interface {
 	ReadResponse(req *Request, env *Env) (resp *Response, updates *Env, err error)
+	Close() error
+}
+
+type closer struct {
+}
+
+func (self *closer) Close() error {
+	return nil
 }

@@ -20,8 +20,7 @@ func main() {
 		N = 1
 	}
 	StartWorkers(N)
-	rr := &HttpResponseReader{}
-	server := NewTaskServer(rr)
+	server := NewTaskServer()
 	var err error
 	if *argDaemon {
 		err = http.ListenAndServe(*argBind, server)

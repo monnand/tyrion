@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"sync"
 )
 
@@ -23,14 +24,34 @@ type ConcurrentActions struct {
 type TaskSpec struct {
 	ConcurrentActions []*ConcurrentActions `json:"concurrent-actions"`
 	InitEnv           *Env                 `json:"env"`
+	Plugins           []*PluginSpec        `json:"plugins,omitempty"`
 }
 
-func (self *TaskSpec) GetWorker(rr ResponseReader) TaskExecutor {
+func (self *TaskSpec) GetWorker(rr ResponseReader) (exec TaskExecutor, err error) {
 	ret := new(worker)
+
+	if rr == nil {
+		plugins := self.Plugins
+		if len(plugins) == 0 {
+			plugins = []*PluginSpec{
+				&PluginSpec{
+					Name:   "http",
+					Params: nil,
+				},
+			}
+		}
+		rr, err = NewPluginChain(plugins)
+		if err != nil {
+			return
+		}
+		ret.closer = rr
+	}
+
 	ret.rr = rr
 	ret.spec = self
 	ret.subTaskChan = subTaskChan
-	return ret
+	exec = ret
+	return
 }
 
 func StartWorkers(n int) {
@@ -51,6 +72,7 @@ type worker struct {
 	subTaskChan chan<- *subTask
 	spec        *TaskSpec
 	rr          ResponseReader
+	closer      io.Closer
 }
 
 type subTaskResult struct {
@@ -75,6 +97,9 @@ func subTaskExecutor(taskChan <-chan *subTask) {
 }
 
 func (self *worker) Execute(errChan chan<- error) []*Env {
+	if self.closer != nil {
+		defer self.closer.Close()
+	}
 	envs := make([]*Env, 1)
 	envs[0] = self.spec.InitEnv
 	if envs[0].IsEmpty() {

@@ -10,6 +10,7 @@ import (
 type mockPlugin struct {
 	Name string
 	rest ResponseReader
+	closer
 }
 
 func (self *mockPlugin) ReadResponse(req *Request, env *Env) (resp *Response, updates *Env, err error) {

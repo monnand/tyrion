@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -19,11 +20,16 @@ func (self *HttpResponseReaderFactory) String() string {
 
 // This plugin does not accept rest in the chain.
 func (self *HttpResponseReaderFactory) NewPlugin(params map[string]string, rest ResponseReader) (rr ResponseReader, err error) {
+	if rest != nil {
+		err = fmt.Errorf("http plugin should never be put as the last plugin")
+		return
+	}
 	rr = &HttpResponseReader{}
 	return
 }
 
 type HttpResponseReader struct {
+	closer
 }
 
 func (self *HttpResponseReader) ReadResponse(req *Request, env *Env) (resp *Response, updates *Env, err error) {
