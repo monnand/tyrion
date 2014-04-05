@@ -21,7 +21,7 @@ func (self *TimerResponseReaderFactory) String() string {
 func (self *TimerResponseReaderFactory) NewPlugin(params map[string]string, rest ResponseReader) (rr ResponseReader, err error) {
 	ret := new(TimerResponseReader)
 	if filename, ok := params["log"]; ok {
-		ret.out, err = os.Create(filename)
+		ret.out, err = os.OpenFile(filename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
 			return
 		}
@@ -58,7 +58,7 @@ func (self *TimerResponseReader) ReadResponse(req *Request, env *Env) (resp *Res
 		if self.out == nil {
 			return
 		}
-		fmt.Fprintf(self.out, "%v\t%v\t%v\n", req.Tag, delta.Nanoseconds(), delta)
+		fmt.Fprintf(self.out, "[%v]\t%v\t%v\t%v\n", start, req.Tag, delta.Nanoseconds(), delta)
 	}
 	return
 }
