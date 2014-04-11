@@ -32,7 +32,7 @@ func (self *TaskServer) ServeJson(w io.Writer, r io.Reader) {
 	err := decoder.Decode(&taskSpec)
 
 	if err != nil {
-		fmt.Fprintf(w, `{"errors": "%v"}`, err)
+		fmt.Fprintf(w, `{"errors": "json decoding error. %v"}`, err)
 		return
 	}
 	errChan := make(chan error)

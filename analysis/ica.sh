@@ -22,16 +22,16 @@ plotsrc() {
 	cp ../density.r .
 	for i in `seq 1 $NRCOL`; do
 		out=`printf "%d-src.tsv" $i`
-		eps=`printf "%d-src-cdf.eps" $i`
+		graph=`printf "%d-src-cdf.pdf" $i`
 		cat $SRCTSV | perl -ne "my @e=split; print \"\$e[$i-1]\\n\";" > $out
-		R CMD BATCH --no-save --no-restore "--args input=\"$out\" output=\"$eps\"" cdf.r
+		R CMD BATCH --no-save --no-restore "--args input=\"$out\" output=\"$graph\"" cdf.r
 
-		eps=`printf "%d-src-pdf.eps" $i`
-		R CMD BATCH --no-save --no-restore "--args input=\"$out\" output=\"$eps\"" density.r 
+		graph=`printf "%d-src-pdf.pdf" $i`
+		R CMD BATCH --no-save --no-restore "--args input=\"$out\" output=\"$graph\"" density.r 
 
-		rm -f cdf.r
-		rm -f density.r
 	done
+	rm -f cdf.r
+	rm -f density.r
 	popd > /dev/null
 }
 

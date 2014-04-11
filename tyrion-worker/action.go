@@ -29,7 +29,7 @@ type Action struct {
 	Params      *template.Template
 	Headers     *template.Template
 	Content     *template.Template
-	ExpStatus   int
+	ExpStatuses []int
 	MaxNrForks  int
 	RespTemp    *template.Template
 	MustMatch   bool
@@ -232,11 +232,18 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 		}
 	}
 
-	if self.ExpStatus > 0 && resp != nil {
-		if self.ExpStatus != resp.Status {
-			err = fmt.Errorf("Reuqest URL %v, expected status code %v, but received %v", url, self.ExpStatus, resp.Status)
+	if len(self.ExpStatuses) > 0 && resp != nil {
+		found := false
+		for _, s := range self.ExpStatuses {
+			if resp.Status == s {
+				found = true
+			}
+		}
+		if !found {
+			err = fmt.Errorf("Reuqest URL %v, expected status codes are %+v, but received %v", url, self.ExpStatuses, resp.Status)
 		}
 	}
+
 	if self.RespTemp == nil {
 		return
 	}

@@ -13,6 +13,7 @@ if (length(args)!=0) {
 	}
 	# d = as.matrix(read.table(input));
 	d = read.then.normalize(input);
-	postscript(file=output, onefile=FALSE, horizontal=FALSE);
+	#pdf(file=output, onefile=FALSE, horizontal=FALSE);
+	pdf(file=output, onefile=FALSE)
 	plot(density(d));
 }

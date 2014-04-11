@@ -19,7 +19,7 @@ type ActionSpec struct {
 	Params      map[string][]string `json:"parameters"`
 	Headers     map[string][]string `json:"headers"`
 	Content     string              `json:"content"`
-	ExpStatus   int                 `json:"expected-status"`
+	ExpStatuses []int               `json:"expected-statuses"`
 	RespTemp    string              `json:"response-template"`
 	MustMatch   bool                `json:"must-match"`
 	MaxNrForks  int                 `json:"max-nr-forks"`
@@ -100,10 +100,7 @@ func (self *ActionSpec) GetAction(rr ResponseReader) (a *Action, err error) {
 		err = fmt.Errorf("Action needs a tag to identify itself")
 		return
 	}
-	ret.ExpStatus = self.ExpStatus
-	if ret.ExpStatus < 0 {
-		ret.ExpStatus = 0
-	}
+	ret.ExpStatuses = self.ExpStatuses
 	ret.rr = rr
 	ret.MaxNrForks = self.MaxNrForks
 	/*

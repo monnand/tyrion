@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"time"
 )
 
@@ -29,14 +30,21 @@ func (self *TimerResponseReaderFactory) NewPlugin(params map[string]string, rest
 		err = fmt.Errorf("timer needs a filename to take logs")
 		return
 	}
+	if tagp, ok := params["tag"]; ok {
+		ret.tagPattern, err = regexp.Compile(tagp)
+		if err != nil {
+			return
+		}
+	}
 	ret.rest = rest
 	rr = ret
 	return
 }
 
 type TimerResponseReader struct {
-	rest ResponseReader
-	out  io.WriteCloser
+	rest       ResponseReader
+	out        io.WriteCloser
+	tagPattern *regexp.Regexp
 }
 
 func (self *TimerResponseReader) Close() error {
@@ -47,6 +55,14 @@ func (self *TimerResponseReader) Close() error {
 }
 
 func (self *TimerResponseReader) ReadResponse(req *Request, env *Env) (resp *Response, updates *Env, err error) {
+	if self.tagPattern != nil {
+		m := self.tagPattern.FindString(req.Tag)
+		fmt.Printf("Matched pattern: %v\n", m)
+		if len(m) == 0 {
+			resp, updates, err = self.rest.ReadResponse(req, env)
+			return
+		}
+	}
 	var delta time.Duration
 	start := time.Now()
 	if self.rest != nil {

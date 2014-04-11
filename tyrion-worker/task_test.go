@@ -104,7 +104,7 @@ func genConcurrentSetOps(kv map[string]string) *ConcurrentActions {
 		spec.Params = make(map[string][]string, 2)
 		spec.Params["key"] = []string{k}
 		spec.Params["value"] = []string{v}
-		spec.ExpStatus = 200
+		spec.ExpStatuses = []int{200}
 		ret = append(ret, spec)
 	}
 	ca.Actions = ret
@@ -122,7 +122,7 @@ func genConcurrentDelOps(kv map[string]string) *ConcurrentActions {
 		spec.Method = "DELETE"
 		spec.Params = make(map[string][]string, 2)
 		spec.Params["key"] = []string{k}
-		spec.ExpStatus = 200
+		spec.ExpStatuses = []int{200}
 		ret = append(ret, spec)
 	}
 	ca.Actions = ret
@@ -140,7 +140,7 @@ func genConcurrentGetOps(kv map[string]string) *ConcurrentActions {
 		spec.Method = "GET"
 		spec.Params = make(map[string][]string, 2)
 		spec.Params["key"] = []string{k}
-		spec.ExpStatus = 200
+		spec.ExpStatuses = []int{200}
 		spec.RespTemp = v
 		spec.MustMatch = true
 		ret = append(ret, spec)
@@ -160,7 +160,7 @@ func genConcurrentGetOpsWithWrongRespTemp(kv map[string]string) *ConcurrentActio
 		spec.Method = "GET"
 		spec.Params = make(map[string][]string, 2)
 		spec.Params["key"] = []string{k}
-		spec.ExpStatus = 200
+		spec.ExpStatuses = []int{200}
 		spec.RespTemp = v + "somevalue"
 		spec.MustMatch = true
 		ret = append(ret, spec)
