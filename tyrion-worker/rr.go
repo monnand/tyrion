@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/url"
@@ -10,9 +11,34 @@ type Request struct {
 	Tag     string
 	URL     string
 	Method  string
-	Content string
+	Content *HttpRequestContent
 	Params  url.Values
 	Headers http.Header
+}
+
+func (self *Request) ToHttpRequest() (req *http.Request, err error) {
+	ret, err := http.NewRequest(self.Method, self.URL, &bytes.Buffer{})
+	if err != nil {
+		return
+	}
+	err = self.Content.DecorateRequest(ret)
+	if err != nil {
+		return
+	}
+	if ret.Header == nil {
+		ret.Header = make(map[string][]string, 10)
+	}
+	for k, vs := range self.Headers {
+		for _, v := range vs {
+			ret.Header.Add(k, v)
+		}
+	}
+
+	if len(self.Params) > 0 {
+		ret.URL.RawQuery = self.Params.Encode()
+	}
+	req = ret
+	return
 }
 
 type Response struct {

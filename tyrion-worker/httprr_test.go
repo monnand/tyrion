@@ -28,9 +28,10 @@ func testHttpResponseReader(t *testing.T, method, content string, params url.Val
 		}
 
 		if len(params) > 0 {
+			q := r.URL.Query()
 			for k, _ := range params {
-				if params.Get(k) != r.PostForm.Get(k) {
-					t.Errorf("Parameter %v should be %v; received %v", k, params.Get(k), r.PostForm.Get(k))
+				if params.Get(k) != q.Get(k) {
+					t.Errorf("Parameter %v should be %v; received %v. content: %v", k, params.Get(k), r.PostForm.Get(k), c)
 				}
 			}
 		}
@@ -50,7 +51,7 @@ func testHttpResponseReader(t *testing.T, method, content string, params url.Val
 		Tag:     "test",
 		URL:     ts.URL,
 		Method:  method,
-		Content: content,
+		Content: &HttpRequestContent{RawContent: content},
 		Params:  params,
 		Headers: headers,
 	}

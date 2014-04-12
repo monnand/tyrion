@@ -67,7 +67,8 @@ func TestPerformActionNoMatch(t *testing.T) {
 	as.Headers["Content-Type"] = []string{"text/text"}
 	as.Params = make(map[string][]string, 10)
 	as.Params["name"] = []string{"{{.user}}"}
-	as.Content = "Username: {{.user}}"
+	as.Content = &HttpRequestContent{}
+	as.Content.RawContent = "Username: {{.user}}"
 	as.Tag = "sometag"
 	response := "Nan Deng: 666999333 \nAlan Turing: 9996664444"
 	expUpdates := make([]map[string]string, 2)
@@ -85,7 +86,8 @@ func TestPerformActionNoMatch(t *testing.T) {
 
 	expurl := "http://localhost:8080/monnand"
 	method := "GET"
-	content := "Username: monnand"
+	content := &HttpRequestContent{}
+	content.RawContent = "Username: monnand"
 
 	v := url.Values{}
 	v.Set("name", "monnand")
@@ -129,7 +131,8 @@ func TestPerformAction(t *testing.T) {
 	as.Headers["Content-Type"] = []string{"text/text"}
 	as.Params = make(map[string][]string, 10)
 	as.Params["name"] = []string{"{{.user}}"}
-	as.Content = "Username: {{.user}}"
+	as.Content = &HttpRequestContent{}
+	as.Content.RawContent = "Username: {{.user}}"
 	as.Tag = "sometag"
 	response := "Nan Deng: 666999333 \nAlan Turing: 9996664444"
 	expUpdates := make([]map[string]string, 2)
@@ -147,7 +150,8 @@ func TestPerformAction(t *testing.T) {
 
 	expurl := "http://localhost:8080/monnand"
 	method := "GET"
-	content := "Username: monnand"
+	content := &HttpRequestContent{}
+	content.RawContent = "Username: monnand"
 
 	v := url.Values{}
 	v.Set("name", "monnand")
@@ -203,7 +207,8 @@ func TestPerformActionWithForks(t *testing.T) {
 	as.Params["name"] = []string{"{{.user}}"}
 	as.MaxNrForks = 1
 	as.Tag = "sometag"
-	as.Content = "Username: {{.user}}"
+	as.Content = &HttpRequestContent{}
+	as.Content.RawContent = "Username: {{.user}}"
 	response := "Nan Deng: 666999333 \nAlan Turing: 9996664444"
 	expUpdates := make([]map[string]string, 2)
 	expUpdates[0] = make(map[string]string)
@@ -220,7 +225,8 @@ func TestPerformActionWithForks(t *testing.T) {
 
 	expurl := "http://localhost:8080/monnand"
 	method := "GET"
-	content := "Username: monnand"
+	content := &HttpRequestContent{}
+	content.RawContent = "Username: monnand"
 
 	v := url.Values{}
 	v.Set("name", "monnand")

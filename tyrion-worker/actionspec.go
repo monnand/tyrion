@@ -18,7 +18,7 @@ type ActionSpec struct {
 	Method      string              `json:"method"`
 	Params      map[string][]string `json:"parameters,omitempty"`
 	Headers     map[string][]string `json:"headers,omitempty"`
-	Content     string              `json:"content,omitempty"`
+	Content     *HttpRequestContent `json:"content,omitempty"`
 	ExpStatuses []int               `json:"expected-statuses,omitempty"`
 	RespTemps   []string            `json:"response-templates,omitempty"`
 	MustMatch   bool                `json:"must-match,omitempty"`
@@ -90,10 +90,9 @@ func (self *ActionSpec) GetAction(rr ResponseReader) (a *Action, err error) {
 			return
 		}
 	}
-	if len(self.Content) > 0 {
-		ret.Content, err = template.New(randomString()).Parse(self.Content)
+	if self.Content != nil {
+		ret.Content, err = self.Content.ToTemplate()
 		if err != nil {
-			err = fmt.Errorf("%v is not a valid template: %v", self.Content, err)
 			return
 		}
 	}
@@ -122,6 +121,7 @@ func (self *ActionSpec) GetAction(rr ResponseReader) (a *Action, err error) {
 	return
 }
 
+/*
 type ActionSeqSpec struct {
 	MaxReqPerSec float64       `json:"max-req-per-sec"`
 	MaxNrReq     int64         `json:"max-nr-req"`
@@ -140,3 +140,4 @@ func ParseActionListFromReader(reader io.Reader) (l *ActionSeqSpec, err error) {
 	err = decoder.Decode(l)
 	return
 }
+*/

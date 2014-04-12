@@ -103,17 +103,8 @@ func (self *Action) getTag(vars *Env) (tag string, err error) {
 	return
 }
 
-func (self *Action) getContent(vars *Env) (content string, err error) {
-	var out bytes.Buffer
-	if self.Content == nil {
-		return
-	}
-	err = self.Content.Execute(&out, vars.NameValuePairs)
-	if err != nil {
-		return
-	}
-	content = out.String()
-	return
+func (self *Action) getContent(vars *Env) (content *HttpRequestContent, err error) {
+	return NewContent(self.Content, vars)
 }
 
 func (self *Action) getRespPattern(vars *Env, idx int) (resp *regexp.Regexp, err error) {
@@ -196,7 +187,14 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 			}
 		}
 		if !found {
-			err = fmt.Errorf("Reuqest URL %v, expected status codes are %+v, but received %v", url, self.ExpStatuses, resp.Status)
+			var data string
+			if resp != nil && resp.Body != nil {
+				d, e := ioutil.ReadAll(resp.Body)
+				if e == nil {
+					data = string(d)
+				}
+			}
+			err = fmt.Errorf("Reuqest URL %v, expected status codes are %+v, but received %v. %v", url, self.ExpStatuses, resp.Status, data)
 			return
 		}
 	}
