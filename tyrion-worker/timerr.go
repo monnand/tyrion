@@ -49,7 +49,10 @@ type TimerResponseReader struct {
 
 func (self *TimerResponseReader) Close() error {
 	if self.out != nil {
-		return self.out.Close()
+		self.out.Close()
+	}
+	if self.rest != nil {
+		return self.rest.Close()
 	}
 	return nil
 }

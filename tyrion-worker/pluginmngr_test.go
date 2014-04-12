@@ -62,8 +62,8 @@ func TestPluginManager(t *testing.T) {
 	for i := 0; i < N; i++ {
 		name := fmt.Sprintf("plugin-%v", i)
 		spec := &PluginSpec{
-			factory.String(),
-			map[string]string{
+			Name: factory.String(),
+			Params: map[string]string{
 				"name": name,
 			},
 		}

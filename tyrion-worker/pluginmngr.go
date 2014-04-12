@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"regexp"
 	"sync"
 )
 
 type PluginSpec struct {
-	Name   string            `json:"name"`
-	Params map[string]string `json:"parameters,omitempty"`
+	Name        string            `json:"name"`
+	TagPatterns []string          `json:"tags,omitempty"`
+	Params      map[string]string `json:"parameters,omitempty"`
 }
 
 type PluginFactory interface {
@@ -15,12 +17,61 @@ type PluginFactory interface {
 	NewPlugin(params map[string]string, rest ResponseReader) (rr ResponseReader, err error)
 }
 
+type pluginTagFilter struct {
+	tags   []*regexp.Regexp
+	plugin ResponseReader
+	rest   ResponseReader
+}
+
+func (self *pluginTagFilter) ReadResponse(req *Request, env *Env) (resp *Response, updates *Env, err error) {
+	if len(self.tags) == 0 {
+		return self.plugin.ReadResponse(req, env)
+	}
+	matched := false
+	for _, t := range self.tags {
+		m := t.FindString(req.Tag)
+		if len(m) > 0 {
+			matched = true
+			break
+		}
+	}
+	if matched {
+		return self.plugin.ReadResponse(req, env)
+	}
+	return self.rest.ReadResponse(req, env)
+}
+
+func (self *pluginTagFilter) Close() error {
+	return self.plugin.Close()
+}
+
 func (self *PluginSpec) GetPlugin(factory PluginFactory, rest ResponseReader) (rr ResponseReader, err error) {
 	if self.Name != factory.String() {
 		err = fmt.Errorf("Unmatched factory: %v is not %v.", factory.String(), self.Name)
 		return
 	}
-	rr, err = factory.NewPlugin(self.Params, rest)
+	tagfilter := new(pluginTagFilter)
+
+	for _, t := range self.TagPatterns {
+		var p *regexp.Regexp
+		p, err = regexp.Compile(t)
+		if err != nil {
+			err = fmt.Errorf("tag %v is not a regular expression: %v", t, err)
+			return
+		}
+		tagfilter.tags = append(tagfilter.tags, p)
+	}
+	plugin, err := factory.NewPlugin(self.Params, rest)
+	if err != nil {
+		return
+	}
+	if plugin == nil {
+		err = fmt.Errorf("%v returned a nil plugin", factory.String())
+		return
+	}
+	tagfilter.plugin = plugin
+	tagfilter.rest = rest
+	rr = tagfilter
 	return
 }
 
