@@ -23,7 +23,7 @@ type ConcurrentActions struct {
 
 type TaskSpec struct {
 	ConcurrentActions []*ConcurrentActions `json:"concurrent-actions"`
-	InitEnv           *Env                 `json:"env"`
+	InitEnv           *Env                 `json:"env,omitempty"`
 	Plugins           []*PluginSpec        `json:"plugins,omitempty"`
 	Finalizers        []*TaskFinalizerSpec `json:"finally,omitempty"`
 }

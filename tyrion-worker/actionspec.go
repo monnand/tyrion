@@ -12,17 +12,17 @@ import (
 )
 
 type ActionSpec struct {
-	Debug       bool                `json:"debug"`
+	Debug       bool                `json:"debug,omitempty"`
 	Tag         string              `json:"tag"`
 	URLTemplate string              `json:"url"`
 	Method      string              `json:"method"`
-	Params      map[string][]string `json:"parameters"`
-	Headers     map[string][]string `json:"headers"`
-	Content     string              `json:"content"`
-	ExpStatuses []int               `json:"expected-statuses"`
-	RespTemp    string              `json:"response-template"`
-	MustMatch   bool                `json:"must-match"`
-	MaxNrForks  int                 `json:"max-nr-forks"`
+	Params      map[string][]string `json:"parameters,omitempty"`
+	Headers     map[string][]string `json:"headers,omitempty"`
+	Content     string              `json:"content,omitempty"`
+	ExpStatuses []int               `json:"expected-statuses,omitempty"`
+	RespTemp    string              `json:"response-template,omitempty"`
+	MustMatch   bool                `json:"must-match,omitempty"`
+	MaxNrForks  int                 `json:"max-nr-forks,omitempty"`
 }
 
 func randomString() string {
