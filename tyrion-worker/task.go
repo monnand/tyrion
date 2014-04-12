@@ -22,8 +22,8 @@ type ConcurrentActions struct {
 }
 
 type TaskSpec struct {
-	ConcurrentActions []*ConcurrentActions `json:"action-seq"`
 	InitEnv           *Env                 `json:"env,omitempty"`
+	ConcurrentActions []*ConcurrentActions `json:"action-seq"`
 	Plugins           []*PluginSpec        `json:"plugins,omitempty"`
 	Finalizers        []*TaskFinalizerSpec `json:"finally,omitempty"`
 }

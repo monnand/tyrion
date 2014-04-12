@@ -207,7 +207,8 @@ func (self *taskSpecWriterFactory) NewFinalizer(params map[string]string, rest T
 	ret := new(taskSpecWriter)
 	ret.rest = rest
 	if filename, ok := params["file"]; ok {
-		ret.w, err = os.OpenFile(filename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+		// ret.w, err = os.OpenFile(filename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+		ret.w, err = os.Create(filename)
 		if err != nil {
 			return
 		}
