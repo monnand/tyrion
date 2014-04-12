@@ -61,7 +61,7 @@ func TestPerformAction(t *testing.T) {
 	var as ActionSpec
 	as.URLTemplate = "http://localhost:8080/{{.user}}"
 	as.Method = "GET"
-	as.RespTemp = "(?P<firstName>([a-zA-Z]+)) (?P<lastName>([a-zA-Z]+)): (?P<tel>[0-9]+)"
+	as.RespTemps = []string{"(?P<firstName>([a-zA-Z]+)) (?P<lastName>([a-zA-Z]+)): (?P<tel>[0-9]+)"}
 	as.Headers = make(map[string][]string, 10)
 	as.Headers["Content-Type"] = []string{"text/text"}
 	as.Params = make(map[string][]string, 10)
@@ -133,7 +133,7 @@ func TestPerformActionWithForks(t *testing.T) {
 	var as ActionSpec
 	as.URLTemplate = "http://localhost:8080/{{.user}}"
 	as.Method = "GET"
-	as.RespTemp = "(?P<firstName>([a-zA-Z]+)) (?P<lastName>([a-zA-Z]+)): (?P<tel>[0-9]+)"
+	as.RespTemps = []string{"(?P<firstName>([a-zA-Z]+)) (?P<lastName>([a-zA-Z]+)): (?P<tel>[0-9]+)"}
 	as.Headers = make(map[string][]string, 10)
 	as.Headers["Content-Type"] = []string{"text/text"}
 	as.Params = make(map[string][]string, 10)

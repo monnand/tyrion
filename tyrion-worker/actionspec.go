@@ -20,7 +20,7 @@ type ActionSpec struct {
 	Headers     map[string][]string `json:"headers,omitempty"`
 	Content     string              `json:"content,omitempty"`
 	ExpStatuses []int               `json:"expected-statuses,omitempty"`
-	RespTemp    string              `json:"response-template,omitempty"`
+	RespTemps   []string            `json:"response-templates,omitempty"`
 	MustMatch   bool                `json:"must-match,omitempty"`
 	MaxNrForks  int                 `json:"max-nr-forks,omitempty"`
 }
@@ -50,11 +50,18 @@ func (self *ActionSpec) GetAction(rr ResponseReader) (a *Action, err error) {
 		err = fmt.Errorf("Unknown method: %v", ret.Method)
 		return
 	}
-	if len(self.RespTemp) > 0 {
-		ret.RespTemp, err = template.New(randomString()).Parse(self.RespTemp)
-		if err != nil {
-			err = fmt.Errorf("%v is not valid regexp: %v", self.RespTemp, err)
-			return
+	if len(self.RespTemps) > 0 {
+		for _, tmpl := range self.RespTemps {
+			var t *template.Template
+			if len(tmpl) == 0 {
+				continue
+			}
+			t, err = template.New(randomString()).Parse(tmpl)
+			if err != nil {
+				err = fmt.Errorf("%v is not valid template: %v", t, err)
+				return
+			}
+			ret.RespTemps = append(ret.RespTemps, t)
 		}
 	}
 	if len(self.Params) > 0 {

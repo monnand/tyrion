@@ -141,7 +141,7 @@ func genConcurrentGetOps(kv map[string]string) *ConcurrentActions {
 		spec.Params = make(map[string][]string, 2)
 		spec.Params["key"] = []string{k}
 		spec.ExpStatuses = []int{200}
-		spec.RespTemp = v
+		spec.RespTemps = []string{v}
 		spec.MustMatch = true
 		ret = append(ret, spec)
 	}
@@ -161,7 +161,7 @@ func genConcurrentGetOpsWithWrongRespTemp(kv map[string]string) *ConcurrentActio
 		spec.Params = make(map[string][]string, 2)
 		spec.Params["key"] = []string{k}
 		spec.ExpStatuses = []int{200}
-		spec.RespTemp = v + "somevalue"
+		spec.RespTemps = []string{v + "somevalue"}
 		spec.MustMatch = true
 		ret = append(ret, spec)
 	}
@@ -427,7 +427,7 @@ func genListUserOp() *ConcurrentActions {
 	ret[0] = new(ActionSpec)
 	ret[0].Tag = "list"
 	ret[0].Method = "GET"
-	ret[0].RespTemp = "User:\\s*(?P<username>([a-zA-Z0-9]+))"
+	ret[0].RespTemps = []string{"User:\\s*(?P<username>([a-zA-Z0-9]+))"}
 	ca.Actions = ret
 	return ca
 }
@@ -442,7 +442,7 @@ func genReadUserinfoOps() *ConcurrentActions {
 	ret[0].Params = make(map[string][]string, 2)
 	ret[0].Params["user"] = []string{"{{.username}}"}
 	ret[0].Params["info"] = []string{"name"}
-	ret[0].RespTemp = "{{.username}}"
+	ret[0].RespTemps = []string{"{{.username}}"}
 	ca.Actions = ret
 	return ca
 }

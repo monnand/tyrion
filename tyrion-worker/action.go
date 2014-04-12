@@ -31,7 +31,7 @@ type Action struct {
 	Content     *template.Template
 	ExpStatuses []int
 	MaxNrForks  int
-	RespTemp    *template.Template
+	RespTemps   []*template.Template
 	MustMatch   bool
 	rr          ResponseReader
 }
@@ -116,14 +116,15 @@ func (self *Action) getContent(vars *Env) (content string, err error) {
 	return
 }
 
-func (self *Action) getRespPattern(vars *Env) (resp *regexp.Regexp, err error) {
-	if self.RespTemp == nil {
+func (self *Action) getRespPattern(vars *Env, idx int) (resp *regexp.Regexp, err error) {
+	if idx < 0 || idx >= len(self.RespTemps) {
 		resp = nil
 		return
 	}
+	tmpl := self.RespTemps[idx]
 	var out bytes.Buffer
 	// FIXME This is dangours! Need to escape first
-	err = self.RespTemp.Execute(&out, vars.NameValuePairs)
+	err = tmpl.Execute(&out, vars.NameValuePairs)
 	if err != nil {
 		return
 	}
@@ -177,7 +178,8 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 	}
 
 	var u []*Env
-	if resp != nil && resp.Body != nil && self.RespTemp != nil {
+	hasMatched := false
+	if resp != nil && resp.Body != nil && len(self.RespTemps) > 0 {
 		body := resp.Body
 		defer body.Close()
 		var d []byte
@@ -187,21 +189,27 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 			return
 		}
 		data := string(d)
-		var respPattern *regexp.Regexp
-		respPattern, err = self.getRespPattern(vars)
-		if err != nil {
-			err = fmt.Errorf("Tag=%v URL=%v %v", self.Tag, url, err)
-			return
+		if self.Debug {
+			fmt.Printf("\n[DEBUG MESSAGE BEGIN]\n\tReq=%+v\n\tResp: %v\n[DEBUG MESSAGE END]\n", req, data)
 		}
-		if respPattern != nil {
-			matched := respPattern.FindAllStringSubmatch(data, -1)
-			if len(matched) == 0 && self.MustMatch {
-				err = fmt.Errorf("URL %v: cannot find matched patterns in the response", url)
+		var respPattern *regexp.Regexp
+		for i := 0; i < len(self.RespTemps); i++ {
+			respPattern, err = self.getRespPattern(vars, i)
+			if err != nil {
+				err = fmt.Errorf("Tag=%v URL=%v %v", self.Tag, url, err)
 				return
 			}
-			if self.Debug {
-				fmt.Printf("\n[DEBUG MESSAGE BEGIN]\n\tReq=%+v\n\tMatched: %+v\nResp: %v\n[DEBUG MESSAGE END]\n", req, matched, data)
+			if respPattern == nil {
+				continue
 			}
+			matched := respPattern.FindAllStringSubmatch(data, -1)
+			if len(matched) == 0 {
+				continue
+			}
+			if self.Debug {
+				fmt.Printf("\n[DEBUG MESSAGE BEGIN]\n\tReq=%+v\n\tMatched: %+v\n[DEBUG MESSAGE END]\n", req, matched)
+			}
+			hasMatched = true
 			if self.MaxNrForks > 0 {
 				if len(matched) > self.MaxNrForks {
 					permedIdx := rand.Perm(len(matched))
@@ -229,7 +237,14 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 					u = append(u, e)
 				}
 			}
+			// Only match at most one pattern
+			break
 		}
+	}
+
+	if len(self.RespTemps) > 0 && !hasMatched && self.MustMatch {
+		err = fmt.Errorf("URL %v: cannot find matched patterns in the response", url)
+		return
 	}
 
 	if len(self.ExpStatuses) > 0 && resp != nil {
@@ -244,7 +259,7 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 		}
 	}
 
-	if self.RespTemp == nil {
+	if len(self.RespTemps) == 0 {
 		return
 	}
 
