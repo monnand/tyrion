@@ -22,9 +22,11 @@ func (self *mockPlugin) ReadResponse(req *Request, env *Env) (resp *Response, up
 			return
 		}
 		var d []byte
-		d, err = ioutil.ReadAll(r.Body)
-		if err != nil {
-			return
+		if r != nil && r.Body != nil {
+			d, err = ioutil.ReadAll(r.Body)
+			if err != nil {
+				return
+			}
 		}
 		data = append(data, d...)
 	}
@@ -77,6 +79,55 @@ func TestPluginManager(t *testing.T) {
 		return
 	}
 	resp, _, err := rr.ReadResponse(nil, nil)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
+	d, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
+	if string(d) != buf.String() {
+		t.Errorf("Returned: %v", string(d))
+	}
+}
+
+func TestPluginTagFilter(t *testing.T) {
+	factory := &mockPluginFactory{}
+	RegisterPlugin(factory)
+	N := 10
+	var buf bytes.Buffer
+	specs := make([]*PluginSpec, 0, N)
+
+	tagpatterns := []string{"correct", "notATag"}
+	for i := 0; i < N; i++ {
+		name := fmt.Sprintf("plugin-%v", i)
+		tp := tagpatterns[i%2]
+		spec := &PluginSpec{
+			Name: factory.String(),
+			Params: map[string]string{
+				"name": name,
+			},
+			TagPatterns: []string{
+				tp,
+			},
+		}
+		specs = append(specs, spec)
+		if tp == "correct" {
+			fmt.Fprintf(&buf, "%v,", name)
+		}
+	}
+
+	rr, err := NewPluginChain(specs)
+	if err != nil {
+		t.Errorf("Error: %v", err)
+		return
+	}
+	req := &Request{
+		Tag: "correctTag",
+	}
+	resp, _, err := rr.ReadResponse(req, nil)
 	if err != nil {
 		t.Errorf("Error: %v", err)
 		return

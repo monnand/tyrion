@@ -38,7 +38,10 @@ func (self *pluginTagFilter) ReadResponse(req *Request, env *Env) (resp *Respons
 	if matched {
 		return self.plugin.ReadResponse(req, env)
 	}
-	return self.rest.ReadResponse(req, env)
+	if self.rest != nil {
+		return self.rest.ReadResponse(req, env)
+	}
+	return
 }
 
 func (self *pluginTagFilter) Close() error {
