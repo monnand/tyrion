@@ -59,7 +59,8 @@ func (self *PluginManager) NewPluginChain(specs []*PluginSpec) (rr ResponseReade
 		if f, ok := self.nameMap[spec.Name]; ok {
 			ret, err = spec.GetPlugin(f, ret)
 		} else {
-			fmt.Errorf("Unknown plugin: %v", spec.Name)
+			err = fmt.Errorf("Unknown plugin: %v", spec.Name)
+			return
 		}
 	}
 	rr = ret

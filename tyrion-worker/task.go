@@ -25,6 +25,7 @@ type TaskSpec struct {
 	ConcurrentActions []*ConcurrentActions `json:"concurrent-actions"`
 	InitEnv           *Env                 `json:"env"`
 	Plugins           []*PluginSpec        `json:"plugins,omitempty"`
+	Finalizers        []*TaskFinalizerSpec `json:"finally,omitempty"`
 }
 
 func (self *TaskSpec) GetWorker(rr ResponseReader) (exec TaskExecutor, err error) {

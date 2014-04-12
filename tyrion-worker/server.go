@@ -35,6 +35,11 @@ func (self *TaskServer) ServeJson(w io.Writer, r io.Reader) {
 		fmt.Fprintf(w, `{"errors": "json decoding error. %v"}`, err)
 		return
 	}
+	finalizer, err := NewTaskFinalizerChain(taskSpec.Finalizers)
+	if err != nil {
+		fmt.Fprintf(w, `{"errors": "unable to construct finalizer. %v"}`, err)
+		return
+	}
 	errChan := make(chan error)
 	var tr taskResult
 	var wg sync.WaitGroup
@@ -54,6 +59,12 @@ func (self *TaskServer) ServeJson(w io.Writer, r io.Reader) {
 		errChan <- err
 	} else {
 		envs = task.Execute(errChan)
+	}
+	if finalizer != nil {
+		err = finalizer.FinalizeTask(&taskSpec, envs)
+		if err != nil {
+			errChan <- err
+		}
 	}
 	close(errChan)
 	wg.Wait()
