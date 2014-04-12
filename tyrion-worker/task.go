@@ -17,12 +17,12 @@ type TaskExecutor interface {
 }
 
 type ConcurrentActions struct {
-	Actions             []*ActionSpec `json:"actions"`
-	ProceedWhenNoUpdate bool          `json:"proceed-when-no-update"`
+	Actions             []*ActionSpec `json:"concurrent-actions"`
+	ProceedWhenNoUpdate bool          `json:"proceed-when-no-update,omitempty"`
 }
 
 type TaskSpec struct {
-	ConcurrentActions []*ConcurrentActions `json:"concurrent-actions"`
+	ConcurrentActions []*ConcurrentActions `json:"action-seq"`
 	InitEnv           *Env                 `json:"env,omitempty"`
 	Plugins           []*PluginSpec        `json:"plugins,omitempty"`
 	Finalizers        []*TaskFinalizerSpec `json:"finally,omitempty"`
