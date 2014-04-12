@@ -134,6 +134,14 @@ func (self *Action) getRespPattern(vars *Env, idx int) (resp *regexp.Regexp, err
 }
 
 func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
+	if self.Debug {
+		fmt.Printf("\n[DEBUG MESSAGE BEGIN]\n\n")
+		defer fmt.Printf("\n[DEBUG MESSAGE END]\n")
+	}
+
+	if self.Debug {
+		fmt.Printf("\tAction: %v\n", self.Tag.Name())
+	}
 	if vars == nil {
 		vars = EmptyEnv()
 	}
@@ -172,9 +180,25 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 		Headers: headers,
 	}
 
+	if self.Debug {
+		fmt.Printf("\tReq=%+v\nNeed to match %v patterns\n", req, len(self.RespTemps))
+	}
 	resp, rupdates, err := self.rr.ReadResponse(req, vars)
 	if err != nil {
 		return
+	}
+
+	if len(self.ExpStatuses) > 0 && resp != nil {
+		found := false
+		for _, s := range self.ExpStatuses {
+			if resp.Status == s {
+				found = true
+			}
+		}
+		if !found {
+			err = fmt.Errorf("Reuqest URL %v, expected status codes are %+v, but received %v", url, self.ExpStatuses, resp.Status)
+			return
+		}
 	}
 
 	var u []*Env
@@ -190,7 +214,7 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 		}
 		data := string(d)
 		if self.Debug {
-			fmt.Printf("\n[DEBUG MESSAGE BEGIN]\n\tReq=%+v\n\tResp: %v\n[DEBUG MESSAGE END]\n", req, data)
+			fmt.Printf("\tResp: %v\n", data)
 		}
 		var respPattern *regexp.Regexp
 		for i := 0; i < len(self.RespTemps); i++ {
@@ -207,7 +231,7 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 				continue
 			}
 			if self.Debug {
-				fmt.Printf("\n[DEBUG MESSAGE BEGIN]\n\tReq=%+v\n\tMatched: %+v\n[DEBUG MESSAGE END]\n", req, matched)
+				fmt.Printf("\tMatched: %+v\n", matched)
 			}
 			hasMatched = true
 			if self.MaxNrForks > 0 {
@@ -246,19 +270,6 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 		err = fmt.Errorf("URL %v: cannot find matched patterns in the response", url)
 		return
 	}
-
-	if len(self.ExpStatuses) > 0 && resp != nil {
-		found := false
-		for _, s := range self.ExpStatuses {
-			if resp.Status == s {
-				found = true
-			}
-		}
-		if !found {
-			err = fmt.Errorf("Reuqest URL %v, expected status codes are %+v, but received %v", url, self.ExpStatuses, resp.Status)
-		}
-	}
-
 	if len(self.RespTemps) == 0 {
 		return
 	}

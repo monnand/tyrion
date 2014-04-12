@@ -57,6 +57,69 @@ func stringMapEq(a, b map[string]string) bool {
 func TestUpdateEnv(t *testing.T) {
 }
 
+func TestPerformActionNoMatch(t *testing.T) {
+	var as ActionSpec
+	as.URLTemplate = "http://localhost:8080/{{.user}}"
+	as.Method = "GET"
+	as.RespTemps = []string{"(?P<firstName>([a-zA-Z]+)) (?P<lastName>([a-zA-Z]+)): (?P<tel>[a-z]+)"}
+	as.MustMatch = true
+	as.Headers = make(map[string][]string, 10)
+	as.Headers["Content-Type"] = []string{"text/text"}
+	as.Params = make(map[string][]string, 10)
+	as.Params["name"] = []string{"{{.user}}"}
+	as.Content = "Username: {{.user}}"
+	as.Tag = "sometag"
+	response := "Nan Deng: 666999333 \nAlan Turing: 9996664444"
+	expUpdates := make([]map[string]string, 2)
+	expUpdates[0] = make(map[string]string)
+	expUpdates[0]["firstName"] = "Nan"
+	expUpdates[0]["lastName"] = "Deng"
+	expUpdates[0]["tel"] = "666999333"
+	expUpdates[1] = make(map[string]string)
+	expUpdates[1]["firstName"] = "Alan"
+	expUpdates[1]["lastName"] = "Turing"
+	expUpdates[1]["tel"] = "9996664444"
+	var env Env
+	env.NameValuePairs = make(map[string]string, 1)
+	env.NameValuePairs["user"] = "monnand"
+
+	expurl := "http://localhost:8080/monnand"
+	method := "GET"
+	content := "Username: monnand"
+
+	v := url.Values{}
+	v.Set("name", "monnand")
+
+	h := http.Header{}
+	h.Set("Content-Type", "text/text")
+
+	rr := new(responseReaderMock)
+	req := &Request{
+		Tag:     as.Tag,
+		URL:     expurl,
+		Method:  method,
+		Content: content,
+		Params:  v,
+		Headers: h,
+	}
+	resp := &Response{
+		Status: 200,
+		Body:   ioutil.NopCloser(bytes.NewBufferString(response)),
+	}
+	rr.On("ReadResponse", req, &env).Return(resp, &Env{}, nil)
+	action, err := as.GetAction(rr)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	_, err = action.Perform(&env)
+	if err == nil {
+		t.Error("Should be an error")
+		return
+	}
+	rr.AssertExpectations(t)
+}
+
 func TestPerformAction(t *testing.T) {
 	var as ActionSpec
 	as.URLTemplate = "http://localhost:8080/{{.user}}"

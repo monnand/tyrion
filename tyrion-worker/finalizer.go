@@ -116,7 +116,7 @@ func (self *mergeFinalizer) FinalizeTask(spec *TaskSpec, envs []*Env) error {
 	for _, key := range self.mergeKeys {
 		value := ""
 		for _, e := range envs {
-			fmt.Printf("merging env: %+v\n", e)
+			// fmt.Printf("merging env: %+v\n", e)
 			if v, ok := e.NameValuePairs[key]; ok {
 				if len(value) > 0 {
 					if v != value {
@@ -131,7 +131,7 @@ func (self *mergeFinalizer) FinalizeTask(spec *TaskSpec, envs []*Env) error {
 		}
 		env.NameValuePairs[key] = value
 	}
-	fmt.Printf("merged env: %+v\n", env)
+	// fmt.Printf("merged env: %+v\n", env)
 	if self.rest != nil {
 		return self.rest.FinalizeTask(spec, []*Env{env})
 	}
