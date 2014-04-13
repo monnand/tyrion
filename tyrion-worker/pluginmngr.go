@@ -9,7 +9,7 @@ import (
 type PluginSpec struct {
 	Name        string            `json:"name"`
 	TagPatterns []string          `json:"tags,omitempty"`
-	Params      map[string]string `json:"parameters,omitempty"`
+	URLQuery    map[string]string `json:"parameters,omitempty"`
 }
 
 type PluginFactory interface {
@@ -64,7 +64,7 @@ func (self *PluginSpec) GetPlugin(factory PluginFactory, rest ResponseReader) (r
 		}
 		tagfilter.tags = append(tagfilter.tags, p)
 	}
-	plugin, err := factory.NewPlugin(self.Params, rest)
+	plugin, err := factory.NewPlugin(self.URLQuery, rest)
 	if err != nil {
 		return
 	}

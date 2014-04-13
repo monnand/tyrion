@@ -5,15 +5,17 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/kr/pretty"
 )
 
 type Request struct {
-	Tag     string
-	URL     string
-	Method  string
-	Content *HttpRequestContent
-	Params  url.Values
-	Headers http.Header
+	Tag      string
+	URL      string
+	Method   string
+	Content  *HttpRequestContent
+	URLQuery url.Values
+	Headers  http.Header
 }
 
 func (self *Request) ToHttpRequest() (req *http.Request, err error) {
@@ -25,6 +27,7 @@ func (self *Request) ToHttpRequest() (req *http.Request, err error) {
 	if err != nil {
 		return
 	}
+	pretty.Printf("After dec: %# v\n", ret.Header)
 	if ret.Header == nil {
 		ret.Header = make(map[string][]string, 10)
 	}
@@ -33,9 +36,10 @@ func (self *Request) ToHttpRequest() (req *http.Request, err error) {
 			ret.Header.Add(k, v)
 		}
 	}
+	pretty.Printf("After header: %# v\n", ret.Header)
 
-	if len(self.Params) > 0 {
-		ret.URL.RawQuery = self.Params.Encode()
+	if len(self.URLQuery) > 0 {
+		ret.URL.RawQuery = self.URLQuery.Encode()
 	}
 	req = ret
 	return

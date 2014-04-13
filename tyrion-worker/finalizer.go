@@ -16,8 +16,8 @@ func init() {
 }
 
 type TaskFinalizerSpec struct {
-	Name   string            `json:"name"`
-	Params map[string]string `json:"parameters,omitempty"`
+	Name     string            `json:"name"`
+	URLQuery map[string]string `json:"parameters,omitempty"`
 }
 
 func (self *TaskFinalizerSpec) GetTaskFinalizer(factory TaskFinalizerFactory, rest TaskFinalizer) (tf TaskFinalizer, err error) {
@@ -25,7 +25,7 @@ func (self *TaskFinalizerSpec) GetTaskFinalizer(factory TaskFinalizerFactory, re
 		err = fmt.Errorf("Unmached factory: %v is not %v", factory.String(), self.Name)
 		return
 	}
-	tf, err = factory.NewFinalizer(self.Params, rest)
+	tf, err = factory.NewFinalizer(self.URLQuery, rest)
 	return
 }
 

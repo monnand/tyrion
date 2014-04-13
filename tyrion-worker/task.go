@@ -36,8 +36,8 @@ func (self *TaskSpec) GetWorker(rr ResponseReader) (exec TaskExecutor, err error
 		if len(plugins) == 0 {
 			plugins = []*PluginSpec{
 				&PluginSpec{
-					Name:   "http",
-					Params: nil,
+					Name:     "http",
+					URLQuery: nil,
 				},
 			}
 		}

@@ -65,7 +65,7 @@ func TestPluginManager(t *testing.T) {
 		name := fmt.Sprintf("plugin-%v", i)
 		spec := &PluginSpec{
 			Name: factory.String(),
-			Params: map[string]string{
+			URLQuery: map[string]string{
 				"name": name,
 			},
 		}
@@ -106,7 +106,7 @@ func TestPluginTagFilter(t *testing.T) {
 		tp := tagpatterns[i%2]
 		spec := &PluginSpec{
 			Name: factory.String(),
-			Params: map[string]string{
+			URLQuery: map[string]string{
 				"name": name,
 			},
 			TagPatterns: []string{

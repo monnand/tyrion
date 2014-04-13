@@ -48,12 +48,12 @@ func testHttpResponseReader(t *testing.T, method, content string, params url.Val
 
 	rr := &HttpResponseReader{}
 	req := &Request{
-		Tag:     "test",
-		URL:     ts.URL,
-		Method:  method,
-		Content: &HttpRequestContent{RawContent: content},
-		Params:  params,
-		Headers: headers,
+		Tag:      "test",
+		URL:      ts.URL,
+		Method:   method,
+		Content:  &HttpRequestContent{RawContent: content},
+		URLQuery: params,
+		Headers:  headers,
 	}
 	resp, u, err := rr.ReadResponse(req, nil)
 	if err != nil {

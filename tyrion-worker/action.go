@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"regexp"
 	"text/template"
+
+	"github.com/kr/pretty"
 )
 
 /*
@@ -26,7 +28,7 @@ type Action struct {
 	URLTemplate *template.Template
 	Tag         *template.Template
 	Method      string
-	Params      *template.Template
+	URLQuery    *template.Template
 	Headers     *template.Template
 	Content     *template.Template
 	ExpStatuses []int
@@ -52,10 +54,10 @@ func (self *Action) getURL(vars *Env) (url string, err error) {
 
 func (self *Action) getParams(vars *Env) (params url.Values, err error) {
 	var out bytes.Buffer
-	if self.Params == nil {
+	if self.URLQuery == nil {
 		return
 	}
-	err = self.Params.Execute(&out, vars.NameValuePairs)
+	err = self.URLQuery.Execute(&out, vars.NameValuePairs)
 	if err != nil {
 		return
 	}
@@ -163,16 +165,16 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 	}
 
 	req := &Request{
-		Tag:     tag,
-		URL:     url,
-		Method:  self.Method,
-		Content: content,
-		Params:  params,
-		Headers: headers,
+		Tag:      tag,
+		URL:      url,
+		Method:   self.Method,
+		Content:  content,
+		URLQuery: params,
+		Headers:  headers,
 	}
 
 	if self.Debug {
-		fmt.Printf("\tReq=%+v\nNeed to match %v patterns\n", req, len(self.RespTemps))
+		pretty.Printf("\tReq=%# v\nNeed to match %v patterns\n", req, len(self.RespTemps))
 	}
 	resp, rupdates, err := self.rr.ReadResponse(req, vars)
 	if err != nil {

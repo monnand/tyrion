@@ -65,8 +65,8 @@ func TestPerformActionNoMatch(t *testing.T) {
 	as.MustMatch = true
 	as.Headers = make(map[string][]string, 10)
 	as.Headers["Content-Type"] = []string{"text/text"}
-	as.Params = make(map[string][]string, 10)
-	as.Params["name"] = []string{"{{.user}}"}
+	as.URLQuery = make(map[string][]string, 10)
+	as.URLQuery["name"] = []string{"{{.user}}"}
 	as.Content = &HttpRequestContent{}
 	as.Content.RawContent = "Username: {{.user}}"
 	as.Tag = "sometag"
@@ -97,12 +97,12 @@ func TestPerformActionNoMatch(t *testing.T) {
 
 	rr := new(responseReaderMock)
 	req := &Request{
-		Tag:     as.Tag,
-		URL:     expurl,
-		Method:  method,
-		Content: content,
-		Params:  v,
-		Headers: h,
+		Tag:      as.Tag,
+		URL:      expurl,
+		Method:   method,
+		Content:  content,
+		URLQuery: v,
+		Headers:  h,
 	}
 	resp := &Response{
 		Status: 200,
@@ -129,8 +129,8 @@ func TestPerformAction(t *testing.T) {
 	as.RespTemps = []string{"(?P<firstName>([a-zA-Z]+)) (?P<lastName>([a-zA-Z]+)): (?P<tel>[0-9]+)"}
 	as.Headers = make(map[string][]string, 10)
 	as.Headers["Content-Type"] = []string{"text/text"}
-	as.Params = make(map[string][]string, 10)
-	as.Params["name"] = []string{"{{.user}}"}
+	as.URLQuery = make(map[string][]string, 10)
+	as.URLQuery["name"] = []string{"{{.user}}"}
 	as.Content = &HttpRequestContent{}
 	as.Content.RawContent = "Username: {{.user}}"
 	as.Tag = "sometag"
@@ -161,12 +161,12 @@ func TestPerformAction(t *testing.T) {
 
 	rr := new(responseReaderMock)
 	req := &Request{
-		Tag:     as.Tag,
-		URL:     expurl,
-		Method:  method,
-		Content: content,
-		Params:  v,
-		Headers: h,
+		Tag:      as.Tag,
+		URL:      expurl,
+		Method:   method,
+		Content:  content,
+		URLQuery: v,
+		Headers:  h,
 	}
 	resp := &Response{
 		Status: 200,
@@ -203,8 +203,8 @@ func TestPerformActionWithForks(t *testing.T) {
 	as.RespTemps = []string{"(?P<firstName>([a-zA-Z]+)) (?P<lastName>([a-zA-Z]+)): (?P<tel>[0-9]+)"}
 	as.Headers = make(map[string][]string, 10)
 	as.Headers["Content-Type"] = []string{"text/text"}
-	as.Params = make(map[string][]string, 10)
-	as.Params["name"] = []string{"{{.user}}"}
+	as.URLQuery = make(map[string][]string, 10)
+	as.URLQuery["name"] = []string{"{{.user}}"}
 	as.MaxNrForks = 1
 	as.Tag = "sometag"
 	as.Content = &HttpRequestContent{}
@@ -235,12 +235,12 @@ func TestPerformActionWithForks(t *testing.T) {
 	h.Set("Content-Type", "text/text")
 	rr := new(responseReaderMock)
 	req := &Request{
-		Tag:     as.Tag,
-		URL:     expurl,
-		Method:  method,
-		Content: content,
-		Params:  v,
-		Headers: h,
+		Tag:      as.Tag,
+		URL:      expurl,
+		Method:   method,
+		Content:  content,
+		URLQuery: v,
+		Headers:  h,
 	}
 	resp := &Response{
 		Status: 200,

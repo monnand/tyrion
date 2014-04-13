@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/kr/pretty"
 )
 
 func init() {
@@ -38,6 +40,11 @@ func (self *HttpResponseReader) ReadResponse(req *Request, env *Env) (resp *Resp
 	if err != nil {
 		return
 	}
+	defer r.Body.Close()
+	d, _ := ioutil.ReadAll(r.Body)
+	fmt.Printf("\n******\n%v\n**********\n", string(d))
+	pretty.Printf("%# v\n", r.Header)
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(d))
 	client := &http.Client{}
 	httpResp, err = client.Do(r)
 	resp = new(Response)

@@ -18,7 +18,7 @@ import (
 type MultiPartFileSpec struct {
 	Field    string `json:"field,omitempty"`
 	Filename string `json:"filename,omitempty"`
-	Content  string `json:"file,omitempty"`
+	Content  string `json:"content,omitempty"`
 }
 
 func (self *MultiPartFileSpec) getFilename() string {
@@ -32,6 +32,7 @@ func (self *MultiPartFileSpec) getContentReader() (r io.ReadCloser, err error) {
 		r, err = os.Open(self.Filename[1:])
 		return
 	}
+	fmt.Printf("file %v: %v\n", self.Filename, self.Content)
 	if len(self.Content) == 0 {
 		r = ioutil.NopCloser(&bytes.Buffer{})
 		return
@@ -73,7 +74,7 @@ type MultiPartContentSpec struct {
 // Otherwise, if MultiPart is specified, Form will be ignored.
 // Otherwise, use Form or empty string.
 type HttpRequestContent struct {
-	RawContent string                `josn:"raw-content,omitempty"`
+	RawContent string                `json:"raw-content,omitempty"`
 	MultiPart  *MultiPartContentSpec `json:"multipart,omitempty"`
 	Form       map[string][]string   `json:"form,omitempty"`
 }
@@ -114,6 +115,7 @@ func (self *HttpRequestContent) DecorateRequest(req *http.Request) error {
 	}
 	if self.MultiPart != nil {
 		writer := multipart.NewWriter(body)
+		defer writer.Close()
 		for k, vs := range self.MultiPart.Form {
 			for _, v := range vs {
 				err := writer.WriteField(k, v)
@@ -130,12 +132,14 @@ func (self *HttpRequestContent) DecorateRequest(req *http.Request) error {
 		}
 		req.Body = ioutil.NopCloser(body)
 		req.Header.Add("Content-Type", writer.FormDataContentType())
+		return nil
 	}
 	if len(self.Form) > 0 {
 		form := url.Values(self.Form)
 		body = bytes.NewBufferString(form.Encode())
 		req.Body = ioutil.NopCloser(body)
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		return nil
 	}
 	return nil
 }

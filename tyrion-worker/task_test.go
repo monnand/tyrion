@@ -34,7 +34,7 @@ func newKvStore() ResponseReader {
 
 func (self *kvStoreResponseReader) ReadResponse(req *Request, env *Env) (resp *Response, updates *Env, err error) {
 	method := req.Method
-	params := req.Params
+	params := req.URLQuery
 
 	status := 404
 	var key string
@@ -101,9 +101,9 @@ func genConcurrentSetOps(kv map[string]string) *ConcurrentActions {
 		spec.Tag = "set"
 		spec.URLTemplate = "http://localhost/set"
 		spec.Method = "POST"
-		spec.Params = make(map[string][]string, 2)
-		spec.Params["key"] = []string{k}
-		spec.Params["value"] = []string{v}
+		spec.URLQuery = make(map[string][]string, 2)
+		spec.URLQuery["key"] = []string{k}
+		spec.URLQuery["value"] = []string{v}
 		spec.ExpStatuses = []int{200}
 		ret = append(ret, spec)
 	}
@@ -120,8 +120,8 @@ func genConcurrentDelOps(kv map[string]string) *ConcurrentActions {
 		spec.Tag = "del"
 		spec.URLTemplate = "http://localhost/del"
 		spec.Method = "DELETE"
-		spec.Params = make(map[string][]string, 2)
-		spec.Params["key"] = []string{k}
+		spec.URLQuery = make(map[string][]string, 2)
+		spec.URLQuery["key"] = []string{k}
 		spec.ExpStatuses = []int{200}
 		ret = append(ret, spec)
 	}
@@ -138,8 +138,8 @@ func genConcurrentGetOps(kv map[string]string) *ConcurrentActions {
 		spec.Tag = "get"
 		spec.URLTemplate = "http://localhost/get"
 		spec.Method = "GET"
-		spec.Params = make(map[string][]string, 2)
-		spec.Params["key"] = []string{k}
+		spec.URLQuery = make(map[string][]string, 2)
+		spec.URLQuery["key"] = []string{k}
 		spec.ExpStatuses = []int{200}
 		spec.RespTemps = []string{v}
 		spec.MustMatch = true
@@ -158,8 +158,8 @@ func genConcurrentGetOpsWithWrongRespTemp(kv map[string]string) *ConcurrentActio
 		spec.Tag = "get"
 		spec.URLTemplate = "http://localhost/get"
 		spec.Method = "GET"
-		spec.Params = make(map[string][]string, 2)
-		spec.Params["key"] = []string{k}
+		spec.URLQuery = make(map[string][]string, 2)
+		spec.URLQuery["key"] = []string{k}
 		spec.ExpStatuses = []int{200}
 		spec.RespTemps = []string{v + "somevalue"}
 		spec.MustMatch = true
@@ -384,7 +384,7 @@ func (self *userInfoDb) getUserInfo(params url.Values) (status int, body io.Read
 
 func (self *userInfoDb) ReadResponse(req *Request, env *Env) (resp *Response, updates *Env, err error) {
 	tag := req.Tag
-	params := req.Params
+	params := req.URLQuery
 	var ret Response
 	switch tag {
 	case "set":
@@ -411,9 +411,9 @@ func genConcurrentAddUserOps(users []string) *ConcurrentActions {
 		a := new(ActionSpec)
 		a.Tag = "set"
 		a.Method = "POST"
-		a.Params = make(map[string][]string, 2)
-		a.Params["user"] = []string{u}
-		a.Params["somekey"] = []string{"something"}
+		a.URLQuery = make(map[string][]string, 2)
+		a.URLQuery["user"] = []string{u}
+		a.URLQuery["somekey"] = []string{"something"}
 		ret = append(ret, a)
 	}
 	ca.Actions = ret
@@ -439,9 +439,9 @@ func genReadUserinfoOps() *ConcurrentActions {
 	ret[0] = new(ActionSpec)
 	ret[0].Tag = "get"
 	ret[0].Method = "GET"
-	ret[0].Params = make(map[string][]string, 2)
-	ret[0].Params["user"] = []string{"{{.username}}"}
-	ret[0].Params["info"] = []string{"name"}
+	ret[0].URLQuery = make(map[string][]string, 2)
+	ret[0].URLQuery["user"] = []string{"{{.username}}"}
+	ret[0].URLQuery["info"] = []string{"name"}
 	ret[0].RespTemps = []string{"{{.username}}"}
 	ca.Actions = ret
 	return ca
