@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"text/template"
 )
 
@@ -25,19 +28,31 @@ func (self *MultiPartFileSpec) getFilename() string {
 	if len(self.Filename) > 0 && self.Filename[0] == '@' {
 		return filepath.Base(self.Filename)
 	}
+	if len(self.Filename) > 0 && self.Filename[0] == '#' {
+		return self.Filename[1:]
+	}
 	return self.Filename
 }
 func (self *MultiPartFileSpec) getContentReader() (r io.ReadCloser, err error) {
 	if len(self.Filename) > 0 && self.Filename[0] == '@' {
 		r, err = os.Open(self.Filename[1:])
-		return
-	}
-	fmt.Printf("file %v: %v\n", self.Filename, self.Content)
-	if len(self.Content) == 0 {
+	} else if len(self.Filename) > 0 && self.Filename[0] == '#' {
+		n := 10
+		n, err = strconv.Atoi(self.Content)
+		if err != nil {
+			err = nil
+			n = 10
+		}
+
+		d := make([]byte, n/2)
+		io.ReadFull(rand.Reader, d)
+		c := hex.EncodeToString(d)
+		r = ioutil.NopCloser(bytes.NewBufferString(c))
+	} else if len(self.Content) == 0 {
 		r = ioutil.NopCloser(&bytes.Buffer{})
-		return
+	} else {
+		r = ioutil.NopCloser(bytes.NewBufferString(self.Content))
 	}
-	r = ioutil.NopCloser(bytes.NewBufferString(self.Content))
 	return
 }
 

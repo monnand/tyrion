@@ -1,12 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-
-	"github.com/kr/pretty"
 )
 
 func init() {
@@ -41,21 +37,25 @@ func (self *HttpResponseReader) ReadResponse(req *Request, env *Env) (resp *Resp
 		return
 	}
 	defer r.Body.Close()
-	d, _ := ioutil.ReadAll(r.Body)
-	fmt.Printf("\n******\n%v\n**********\n", string(d))
-	pretty.Printf("%# v\n", r.Header)
-	r.Body = ioutil.NopCloser(bytes.NewBuffer(d))
+	/*
+		d, _ := ioutil.ReadAll(r.Body)
+		fmt.Printf("\n******\n%v\n**********\n", string(d))
+		pretty.Printf("%# v\n", r.Header)
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(d))
+	*/
 	client := &http.Client{}
 	httpResp, err = client.Do(r)
 	resp = new(Response)
 	resp.Status = httpResp.StatusCode
-	// resp.Body = httpResp.Body
-	defer httpResp.Body.Close()
-	body, err := ioutil.ReadAll(httpResp.Body)
-	if err != nil {
-		return
-	}
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	resp.Body = httpResp.Body
+	/*
+		defer httpResp.Body.Close()
+		body, err := ioutil.ReadAll(httpResp.Body)
+		if err != nil {
+			return
+		}
+		resp.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	*/
 
 	return
 }

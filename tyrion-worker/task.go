@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"sync"
+
+	"github.com/kr/pretty"
 )
 
 var subTaskChan chan *subTask
@@ -19,6 +21,8 @@ type TaskExecutor interface {
 type ConcurrentActions struct {
 	Actions             []*ActionSpec `json:"concurrent-actions"`
 	ProceedWhenNoUpdate bool          `json:"proceed-when-no-update,omitempty"`
+	Skip                bool          `json:"skip,omitempty"`
+	Debug               bool          `json:"debug,omitempty"`
 }
 
 type TaskSpec struct {
@@ -77,8 +81,8 @@ type worker struct {
 }
 
 type subTaskResult struct {
-	err     error
-	updates []*Env
+	err   error
+	forks []*Env
 }
 
 type subTask struct {
@@ -91,7 +95,7 @@ func subTaskExecutor(taskChan <-chan *subTask) {
 	for st := range taskChan {
 		updates, err := st.action.Perform(st.env)
 		res := new(subTaskResult)
-		res.updates = updates
+		res.forks = st.env.Fork(updates...)
 		res.err = err
 		st.resChan <- res
 	}
@@ -110,15 +114,21 @@ func (self *worker) Execute(errChan chan<- error) []*Env {
 	nilEnvs[0] = EmptyEnv()
 
 	for _, concurrentActions := range self.spec.ConcurrentActions {
+		if concurrentActions.Skip {
+			continue
+		}
 		nrActions := len(concurrentActions.Actions)
+		if concurrentActions.Debug {
+			pretty.Printf("%v ConcurrentActions\n%v environments:%# v\n", nrActions, len(envs), envs)
+		}
 		if nrActions == 0 {
 			continue
 		}
 		resChan := make(chan *subTaskResult)
-		updates := make([]*Env, 0, nrActions*2)
 		var wg sync.WaitGroup
 		wg.Add(1)
 		// reaper function
+		forks := make([]*Env, 0, len(envs)*3)
 		go func(n int) {
 			defer wg.Done()
 			for i := 0; i < n; i++ {
@@ -127,7 +137,8 @@ func (self *worker) Execute(errChan chan<- error) []*Env {
 					errChan <- res.err
 					continue
 				}
-				updates = append(updates, res.updates...)
+				forks = append(forks, res.forks...)
+				forks = uniqEnvs(forks...)
 			}
 		}(nrActions * len(envs))
 
@@ -148,15 +159,10 @@ func (self *worker) Execute(errChan chan<- error) []*Env {
 			}
 		}
 		wg.Wait()
-		if len(updates) == 0 && !concurrentActions.ProceedWhenNoUpdate {
+		if len(forks) == 0 && !concurrentActions.ProceedWhenNoUpdate {
 			break
 		}
-		forks := make([]*Env, 0, len(envs)*len(updates))
-		for _, env := range envs {
-			f := env.Fork(updates...)
-			forks = append(forks, f...)
-		}
-		envs = uniqEnvs(forks...)
+		envs = forks
 		if len(envs) == 0 {
 			envs = nilEnvs[:]
 		}

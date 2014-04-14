@@ -133,7 +133,7 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 	}
 
 	if self.Debug {
-		fmt.Printf("\tAction: %v\n", self.Tag.Name())
+		fmt.Printf("Action: %v\n", self.Tag.Name())
 	}
 	if vars == nil {
 		vars = EmptyEnv()
@@ -174,7 +174,7 @@ func (self *Action) Perform(vars *Env) (updates []*Env, err error) {
 	}
 
 	if self.Debug {
-		pretty.Printf("\tReq=%# v\nNeed to match %v patterns\n", req, len(self.RespTemps))
+		pretty.Printf("Req:\n%# v\nNeed to match %v patterns\n", req, len(self.RespTemps))
 	}
 	resp, rupdates, err := self.rr.ReadResponse(req, vars)
 	if err != nil {
