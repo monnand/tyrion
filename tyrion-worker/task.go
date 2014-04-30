@@ -108,6 +108,7 @@ func (self *worker) Execute(errChan chan<- error) []*Env {
 	envs := make([]*Env, 1)
 	envs[0] = self.spec.InitEnv
 	if envs[0].IsEmpty() {
+		envs = make([]*Env, 1, 10)
 		envs[0] = EmptyEnv()
 	}
 	var nilEnvs [1]*Env

@@ -1,3 +1,5 @@
+#!/bin/bash
+
 cleanFiles(){
 	rm -rf src-*
 	rm -f sources*.tsv

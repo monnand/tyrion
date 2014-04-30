@@ -45,6 +45,9 @@ func (self *HttpResponseReader) ReadResponse(req *Request, env *Env) (resp *Resp
 	*/
 	client := &http.Client{}
 	httpResp, err = client.Do(r)
+	if err != nil {
+		return
+	}
 	resp = new(Response)
 	resp.Status = httpResp.StatusCode
 	resp.Body = httpResp.Body
