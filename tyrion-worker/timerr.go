@@ -77,7 +77,7 @@ func (self *TimerResponseReader) ReadResponse(req *Request, env *Env) (resp *Res
 		if self.out == nil {
 			return
 		}
-		fmt.Fprintf(self.out, "[%v]\t%v\t%v\t%v\n", start, req.Tag, delta.Nanoseconds(), delta)
+		fmt.Fprintf(self.out, "[%v]\t%v\t%v\t%v\tStatus%v\n", start, req.Tag, delta.Nanoseconds(), delta, resp.Status)
 	}
 	return
 }

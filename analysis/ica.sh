@@ -8,7 +8,8 @@ cleanFiles(){
 
 ica(){
 	LOG=$1
-	./log2tsv.py $LOG > out.tsv
+	./logfilter.py $LOG > out.log
+	./log2tsv.py out.log > out.tsv
 	R CMD BATCH ica.r
 }
 

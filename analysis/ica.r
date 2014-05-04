@@ -1,23 +1,25 @@
-require('fastICA')
-runICAs = function(m) {
-	N = dim(m)[2]
-	s = sapply(2:N, function(n) {
-		ret = fastICA(m, n)
-		return(ret$S)
-	})
+library('fastICA')
+
+normalize = function(data) {
+	data = data + abs(min(data))
+	data = data / abs(max(data))
+	return(data)
 }
 
-dump.ms = function(ms, prefix="sources", sep="-") {
-	sapply(ms, function(m) {
-	       n = dim(m)[2]
-	       f = paste(prefix, n, sep=sep)
-	       f = paste(f, "tsv", sep=".")
-	       write.table(m, f, row.names=F, col.names=F)
-	       return(0);
-	})
-	return(0);
+negate = function(data) {
+	m = mean(normalize(data))
+	if (m > 0.5) {
+		return(-data)
+	}
+	return(data)
 }
 
-inputf='out.tsv'
-m = as.matrix(read.table(inputf))
-dump.ms(runICAs(m))
+ica.norm.srcs = function(obv) {
+	n = dim(obv)[2]
+	icares = fastICA(obv, n)
+	srcs = icares$S
+	srcs = apply(srcs, 2, negate)
+	srcs = apply(srcs, 2, normalize)
+	return(srcs)
+}
+

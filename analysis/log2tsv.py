@@ -41,7 +41,7 @@ class LogReader:
         self.store.dump(out)
 
 if __name__ == "__main__":
-        inputf = sys.argv[1]
-        lr = LogReader(inputf)
-        lr.load()
-        lr.dump(sys.stdout)
+    inputf = sys.argv[1]
+    lr = LogReader(inputf)
+    lr.load()
+    lr.dump(sys.stdout)

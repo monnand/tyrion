@@ -3,6 +3,8 @@ library("parallel")
 library('ggplot2')
 library('reshape2')
 
+source('ica.r')
+
 sample = function(input, period=6, start=100, end=300) {
 	total = dim(input)[1]
 	idx = 1:total
@@ -12,20 +14,6 @@ sample = function(input, period=6, start=100, end=300) {
 	}
 	ret=input[start:end,][filter,]
 	return(ret)
-}
-
-normalize = function(data) {
-	data = data + abs(min(data))
-	data = data / abs(max(data))
-	return(data)
-}
-
-negate = function(data) {
-	m = mean(normalize(data))
-	if (m > 0.5) {
-		return(-data)
-	}
-	return(data)
 }
 
 recover.with.two.points = function(src, obv, pt1, pt2) {
@@ -93,15 +81,6 @@ recover = function(src, obv, alpha=0.8, sla_percentage = 0.99, sla_time = 330000
 # 	return(recsrcs)
 # }
 
-ica.norm.srcs = function(obv) {
-	n = dim(obv)[2]
-	icares = fastICA(obv, n)
-	srcs = icares$S
-	negsrcs = apply(srcs, 2, negate)
-	normsrcs = apply(negsrcs, 2, normalize)
-	return(normsrcs)
-}
- 
 percentile.curry = function(percent) {
 	ret = function(data) {
 		return(quantile(ecdf(data), percent))
@@ -109,7 +88,7 @@ percentile.curry = function(percent) {
 	return(ret)
 }
 
-multi.percentiles.curry = function(percents) {
+multiPercentilesCurry = function(percents) {
 	ret = function(data) {
 		r = sapply(percents, function(percent) {
 			if (percent == 1.0) {
@@ -122,7 +101,7 @@ multi.percentiles.curry = function(percents) {
 	return(ret)
 }
 
-multi.indices.curry = function(idcs) {
+multiIndicesCurry = function(idcs) {
 	ret = function(data) {
 		r = sapply(idcs, function(idx) {
 			   return(sort(as.vector(data))[[idx]])
@@ -143,40 +122,25 @@ multi.indices.curry = function(idcs) {
 # 		return(srcs.reduce.fn(recsrcs))
 # 	})
 # }
- 
-predictSinceBeginning = function(obv, step, reduceFuncWithinSrc, reduceFuncBetweenSrcs=max, col.names=0, alpha=0.8, sla_percentage=0.999, sla_time=14000000000) {
-	n = dim(obv)[[1]]
-	ends = seq(step,n,by=step)
-	em = matrix(ends, length(ends), 1)
-	print(em)
-	ret = apply(em, 1, function(e) {
-		end = e[[1]]
-		print(paste("Caltulating from 1 to", end))
-		s = sample(obv, 1, 1, end)
-		normsrcs = ica.norm.srcs(s)
-		recsrcs = apply(normsrcs, 2, function(src) {
-			return(reduceFuncWithinSrc(recover(src, s, alpha, sla_percentage, sla_time)))
-		})
-		r = reduceFuncBetweenSrcs(recsrcs)
-		print(paste("Caltulated from 1 to", end, ": ", r))
-		return(r)
-	})
-	x = data.frame(ends,t(ret))
-	if (length(col.names) != dim(x)[[2]] - 1) {
-		col.names = 1:(dim(x)[[2]] - 1)
+
+# cbind function but always cut/pad y to the same length as x before doing cbind
+cbindWithPadding = function(x, y) {
+	if (length(x) > length(y)) {
+		padding = rep(y[[length(y)]], length(x) - length(y))
+		y = c(y, padding)
+	} else if (length(x) < length(y)) {
+		y = y[1:length(x)]
 	}
-	names(x) = c("time", col.names)
-	return(x)
+	return(cbind(x,y))
 }
- 
-predictWithinWindow = function(obv, windowSize, reduceFuncWithinSrc, reduceFuncBetweenSrcs=max, col.names=0, alpha=0.8, sla_percentage=0.999, sla_time=14000000000) {
-	n = dim(obv)[[1]]
-	ends = seq(windowSize,n,by=windowSize)
-	em = matrix(ends, length(ends), 1)
-	print(em)
-	ret = apply(em, 1, function(e) {
-		end = e[[1]]
-		start = end-windowSize
+
+
+predictWithinRange = function(obv, param_matrix, reduceFuncWithinSrc, reduceFuncBetweenSrcs=max, colNames=0, alpha=0.2, sla_percentage=0.999) {
+	ends=param_matrix[,2]
+	ret = apply(param_matrix, 1, function(e) {
+		start = e[[1]]
+		end = e[[2]]
+		sla_time = e[[3]]
 		print(paste("Caltulating from", start, "to", end))
 		s = sample(obv, 1, start, end)
 		normsrcs = ica.norm.srcs(s)
@@ -188,12 +152,57 @@ predictWithinWindow = function(obv, windowSize, reduceFuncWithinSrc, reduceFuncB
 		return(r)
 	})
 	x = data.frame(ends,t(ret))
-	if (length(col.names) != dim(x)[[2]] - 1) {
-		col.names = 1:(dim(x)[[2]] - 1)
+	if (length(colNames) != dim(x)[[2]] - 1) {
+		colNames = 1:(dim(x)[[2]] - 1)
 	}
-	names(x) = c("time", col.names)
+	names(x) = c("time", colNames)
 	return(x)
+
 }
+ 
+predictWithinWindow = function(obv, windowSize, reduceFuncWithinSrc, reduceFuncBetweenSrcs=max, colNames=0, alpha=0.8, sla_percentage=0.999, sla_times=14000000000) {
+	n = dim(obv)[[1]]
+	ends = seq(windowSize,n,by=windowSize)
+	starts = seq(1, ends[[length(ends)]], by=windowSize)
+	em = cbindWithPadding(ends, sla_times)
+	em = cbind(starts,em)
+	return(predictWithinRange(obv, em, reduceFuncWithinSrc, reduceFuncBetweenSrcs, colNames=colNames, alpha=alpha, sla_percentage=sla_percentage))
+}
+
+predictSinceBeginning = function(obv, step, reduceFuncWithinSrc, reduceFuncBetweenSrcs=max, colNames=0, alpha=0.8, sla_percentage=0.999, sla_times=14000000000) {
+	n = dim(obv)[[1]]
+	ends = seq(windowSize,n,by=windowSize)
+	starts = rep(1, length(ends))
+	em = cbindWithPadding(ends, sla_times)
+	em = cbind(starts,em)
+	return(predictWithinRange(obv, em, reduceFuncWithinSrc, reduceFuncBetweenSrcs, colNames=colNames, alpha=alpha, sla_percentage=sla_percentage))
+}
+ 
+# predictSinceBeginning = function(obv, step, reduceFuncWithinSrc, reduceFuncBetweenSrcs=max, col.names=0, alpha=0.8, sla_percentage=0.999, sla_times=14000000000) {
+# 	n = dim(obv)[[1]]
+# 	ends = seq(step,n,by=step)
+# 	em = cbindWithPadding(ends, sla_times)
+# 	print(em)
+# 	ret = apply(em, 1, function(e) {
+# 		end = e[[1]]
+# 		sla_time = e[[2]]
+# 		print(paste("Caltulating from 1 to", end))
+# 		s = sample(obv, 1, 1, end)
+# 		normsrcs = ica.norm.srcs(s)
+# 		recsrcs = apply(normsrcs, 2, function(src) {
+# 			return(reduceFuncWithinSrc(recover(src, s, alpha, sla_percentage, sla_time)))
+# 		})
+# 		r = reduceFuncBetweenSrcs(recsrcs)
+# 		print(paste("Caltulated from 1 to", end, ": ", r))
+# 		return(r)
+# 	})
+# 	x = data.frame(ends,t(ret))
+# 	if (length(col.names) != dim(x)[[2]] - 1) {
+# 		col.names = 1:(dim(x)[[2]] - 1)
+# 	}
+# 	names(x) = c("time", col.names)
+# 	return(x)
+# }
 
 reduceDataSinceBeginning = function(obv, step, reducefn) {
 	n = dim(obv)[[1]]
@@ -226,57 +235,54 @@ appendColToDataFrame = function(rs, rd, name) {
 	return(rs)
 }
 
-
-window = function() {
-	obv=as.matrix(read.table('out.tsv'))
+icaAnalysis = function(predictFunc, reduceDataFunc, reduceFuncForSLA, step=200, input='out.tsv', output='window.pdf') {
+	percentile=0.9999
+	alpha=0.2
+	obv=as.matrix(read.table(input))
 	#s=sample(obv,1,1,1000)
 	s=obv
-	step=500
-	src.reduce.percentiles = c(0.5, 0.8, 0.9, 1.0)
-	#src.idcs = 1:10
-	src.idcs = c(1, 6, 9)
-	col.names = sapply(src.reduce.percentiles, function(p) {
-		paste("Predicted 99.99%tile.", p*100, "%tile source")
+	srcIndcs = c(1, 100)
+	sla_percentage=0.999
+	sla_init_time=14000000000
+	colNames = sapply(srcIndcs, function(p) {
+		paste("Predicted 99.99%tile.", p, "%tile source")
 	})
-	idcs.col.names = sapply(src.idcs, function(p) {
-		paste("Predicted 99.99%tile.", p*10, "%tile source")
-	})
-	rs=predictWithinWindow(s, step, percentile.curry(0.9999), multi.indices.curry(src.idcs), idcs.col.names, alpha=0.0)
+	sla_times=as.vector(reduceFuncForSLA(s, step, percentile.curry(sla_percentage))[,2])
+	sla_times=c(sla_init_time, sla_times)
+	print(sla_times)
 
-	rd=as.vector(reduceDataWithinWindow(s, step, percentile.curry(0.9999))[,2])
-	rs=appendColToDataFrame(rs, rd, "Observed 99.99%tile")
+	rs=predictFunc(
+		       s,
+		       step,
+		       percentile.curry(percentile),
+		       multiIndicesCurry(srcIndcs),
+		       colNames=colNames,
+		       alpha=alpha,
+		       sla_percentage=sla_percentage,
+		       sla_times=sla_times
+		       )
 
-	rd=as.vector(reduceDataWithinWindow(s, step, max)[,2])
+	rd=as.vector(reduceFuncForSLA(s, step, percentile.curry(sla_percentage))[,2])
+	rs=appendColToDataFrame(rs, rd, paste("Observed SLA time"))
+
+	rd=as.vector(reduceDataFunc(s, step, percentile.curry(sla_percentage))[,2])
+	rs=appendColToDataFrame(rs, rd, paste("Observed", sla_percentage,"%tile"))
+
+	rd=as.vector(reduceDataFunc(s, step, percentile.curry(percentile))[,2])
+	rs=appendColToDataFrame(rs, rd, paste("Observed", percentile,"%tile"))
+
+	rd=as.vector(reduceDataFunc(s, step, max)[,2])
 	rs=appendColToDataFrame(rs, rd, "Observed max")
+
+	rd=as.vector(reduceDataFunc(s, step, min)[,2])
+	rs=appendColToDataFrame(rs, rd, "Observed min")
 
 	melted = melt(rs, id.vars="time")
 	ggplot(data=melted, aes(x=time, y=value, group=variable, color=variable)) + geom_line()
-	ggsave(file="window.pdf", width=15, height=7)
+	ggsave(file=output, width=15, height=7)
 }
 
 main = function() {
-	obv=as.matrix(read.table('out.tsv'))
-	#s=sample(obv,1,1,1000)
-	s=obv
-	step=200
-	src.reduce.percentiles = c(0.5, 0.8, 0.9, 1.0)
-	#src.idcs = 1:10
-	src.idcs = c(1, 6, 9)
-	col.names = sapply(src.reduce.percentiles, function(p) {
-		paste("Predicted 99.99%tile.", p*100, "%tile source")
-	})
-	idcs.col.names = sapply(src.idcs, function(p) {
-		paste("Predicted 99.99%tile.", p*10, "%tile source")
-	})
-	rs=predictSinceBeginning(s, step, percentile.curry(0.9999), multi.indices.curry(src.idcs), idcs.col.names, alpha=0.0)
-
-	rd=as.vector(reduceDataSinceBeginning(s, step, percentile.curry(0.9999))[,2])
-	rs=appendColToDataFrame(rs, rd, "Observed 99.99%tile")
-
-	rd=as.vector(reduceDataSinceBeginning(s, step, max)[,2])
-	rs=appendColToDataFrame(rs, rd, "Observed max")
-
-	melted = melt(rs, id.vars="time")
-	ggplot(data=melted, aes(x=time, y=value, group=variable, color=variable)) + geom_line()
-	ggsave(file="test.pdf", width=15, height=7)
+	icaAnalysis(predictWithinWindow, reduceDataWithinWindow, reduceDataSinceBeginning, step=200, input='out.tsv', output='window-vary-sla-all-history.pdf')
+	icaAnalysis(predictWithinWindow, reduceDataWithinWindow, reduceDataWithinWindow, step=200, input='out.tsv', output='window-vary-sla-window-history.pdf')
 }
