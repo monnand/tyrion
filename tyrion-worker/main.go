@@ -30,6 +30,7 @@ func main() {
 		if err == nil {
 			defer f.Close()
 			server.ServeJson(os.Stdout, f)
+			fmt.Println()
 		}
 	}
 	if err != nil {
