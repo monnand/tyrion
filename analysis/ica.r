@@ -23,3 +23,12 @@ ica.norm.srcs = function(obv) {
 	return(srcs)
 }
 
+tailDiffCurry = function(a, b) {
+	ret = function(src) {
+		p = quantile(ecdf(src), a)
+		q = quantile(ecdf(src), b)
+		return(abs(q-p))
+	}
+	return(ret)
+}
+

@@ -169,7 +169,7 @@ predictWithinWindow = function(obv, windowSize, reduceFuncWithinSrc, reduceFuncB
 	return(predictWithinRange(obv, em, reduceFuncWithinSrc, reduceFuncBetweenSrcs, colNames=colNames, alpha=alpha, sla_percentage=sla_percentage))
 }
 
-predictSinceBeginning = function(obv, step, reduceFuncWithinSrc, reduceFuncBetweenSrcs=max, colNames=0, alpha=0.8, sla_percentage=0.999, sla_times=14000000000) {
+predictSinceBeginning = function(obv, windowSize, reduceFuncWithinSrc, reduceFuncBetweenSrcs=max, colNames=0, alpha=0.8, sla_percentage=0.999, sla_times=14000000000) {
 	n = dim(obv)[[1]]
 	ends = seq(windowSize,n,by=windowSize)
 	starts = rep(1, length(ends))
@@ -204,6 +204,12 @@ predictSinceBeginning = function(obv, step, reduceFuncWithinSrc, reduceFuncBetwe
 # 	return(x)
 # }
 
+reduceDataConstCurry = function(v) {
+	ret = function(obv, step, reducefn) {
+		return(cbind(1, v))
+	}
+}
+
 reduceDataSinceBeginning = function(obv, step, reducefn) {
 	n = dim(obv)[[1]]
 	ends = seq(step,n,by=step)
@@ -235,20 +241,22 @@ appendColToDataFrame = function(rs, rd, name) {
 	return(rs)
 }
 
-icaAnalysis = function(predictFunc, reduceDataFunc, reduceFuncForSLA, step=200, input='out.tsv', output='window.pdf') {
+icaAnalysis = function(predictFunc, reduceDataFunc, reduceFuncForSLA, step=200, slaPercentage=0.999, slaInitTime=14000000000, slaTimeShift=T, input='out.tsv', output='window.pdf') {
 	percentile=0.9999
 	alpha=0.2
 	obv=as.matrix(read.table(input))
 	#s=sample(obv,1,1,1000)
 	s=obv
 	srcIndcs = c(1, 100)
-	sla_percentage=0.999
-	sla_init_time=14000000000
+	sla_percentage=slaPercentage
 	colNames = sapply(srcIndcs, function(p) {
 		paste("Predicted 99.99%tile.", p, "%tile source")
 	})
+	sla_times = slaInitTime
 	sla_times=as.vector(reduceFuncForSLA(s, step, percentile.curry(sla_percentage))[,2])
-	sla_times=c(sla_init_time, sla_times)
+	if (slaTimeShift) {
+		sla_times=c(slaInitTime, sla_times)
+	}
 	print(sla_times)
 
 	rs=predictFunc(
@@ -278,11 +286,18 @@ icaAnalysis = function(predictFunc, reduceDataFunc, reduceFuncForSLA, step=200, 
 	rs=appendColToDataFrame(rs, rd, "Observed min")
 
 	melted = melt(rs, id.vars="time")
-	ggplot(data=melted, aes(x=time, y=value, group=variable, color=variable)) + geom_line()
+	ggplot(data=melted, aes(x=time, y=value, group=variable, color=variable, linetype=variable)) + geom_line()
 	ggsave(file=output, width=15, height=7)
 }
 
 main = function() {
-	icaAnalysis(predictWithinWindow, reduceDataWithinWindow, reduceDataSinceBeginning, step=200, input='out.tsv', output='window-vary-sla-all-history.pdf')
-	icaAnalysis(predictWithinWindow, reduceDataWithinWindow, reduceDataWithinWindow, step=200, input='out.tsv', output='window-vary-sla-window-history.pdf')
+	theme_set(theme_gray(base_size = 25))
+	icaAnalysis(predictSinceBeginning, reduceDataSinceBeginning, reduceDataConstCurry(14000000000), step=200, input='out.tsv', output='all-history-fixed-sla.pdf')
+	icaAnalysis(predictWithinWindow, reduceDataWithinWindow, reduceDataConstCurry(14000000000), step=200, input='out.tsv', output='window-fixed-sla.pdf')
+
+	icaAnalysis(predictSinceBeginning, reduceDataSinceBeginning, reduceDataSinceBeginning, slaTimeShift=F, step=200, input='out.tsv', output='all-history-vary-sla-all-history.pdf')
+	icaAnalysis(predictWithinWindow, reduceDataWithinWindow, reduceDataSinceBeginning, slaTimeShift=F, step=200, input='out.tsv', output='window-vary-sla-all-history.pdf')
+
+	icaAnalysis(predictSinceBeginning, reduceDataSinceBeginning, reduceDataWithinWindow, slaTimeShift=F, step=200, input='out.tsv', output='all-history-vary-sla-recent-history.pdf')
+	icaAnalysis(predictWithinWindow, reduceDataWithinWindow, reduceDataWithinWindow, slaTimeShift=F, step=200, input='out.tsv', output='window-vary-sla-recent-history.pdf')
 }
