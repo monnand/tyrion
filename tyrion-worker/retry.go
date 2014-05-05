@@ -49,6 +49,14 @@ func (self *RetryPluginFactory) NewPlugin(params map[string]string, rest Respons
 	if err != nil {
 		return
 	}
+	retryUntilStr := "200"
+	if retryUntilStr, ok = params["retry-until"]; !ok {
+		retryUntilStr = ""
+	}
+	retryUntil, err := self.stringToIntList(retryUntilStr)
+	if err != nil {
+		return
+	}
 	maxTimeOut := "10s"
 	if maxTimeOut, ok = params["max-wait"]; !ok {
 		maxTimeOut = "10s"
@@ -58,18 +66,20 @@ func (self *RetryPluginFactory) NewPlugin(params map[string]string, rest Respons
 		return
 	}
 	ret := &RetryPlugin{
-		rest:            rest,
-		maxTimeOut:      maxWait,
-		retryOnStatuses: retryStatuses,
+		rest:               rest,
+		maxTimeOut:         maxWait,
+		retryOnStatuses:    retryStatuses,
+		retryUntilStatuses: retryUntil,
 	}
 	rr = ret
 	return
 }
 
 type RetryPlugin struct {
-	rest            ResponseReader
-	maxTimeOut      time.Duration
-	retryOnStatuses []int
+	rest               ResponseReader
+	maxTimeOut         time.Duration
+	retryOnStatuses    []int
+	retryUntilStatuses []int
 }
 
 func (self *RetryPlugin) Close() error {
@@ -87,6 +97,14 @@ func (self *RetryPlugin) shouldRetry(resp *Response) bool {
 		if resp.Status == s {
 			return true
 		}
+	}
+	if len(self.retryUntilStatuses) > 0 {
+		for _, s := range self.retryUntilStatuses {
+			if resp.Status == s {
+				return false
+			}
+		}
+		return true
 	}
 	return false
 }
