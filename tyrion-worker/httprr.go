@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -22,12 +24,19 @@ func (self *HttpResponseReaderFactory) NewPlugin(params map[string]string, rest 
 		err = fmt.Errorf("http plugin should never be put as the last plugin")
 		return
 	}
-	rr = &HttpResponseReader{}
+	convertError := true
+	if str, ok := params["convert-error"]; ok {
+		if str == "false" {
+			convertError = false
+		}
+	}
+	rr = &HttpResponseReader{convertError: convertError}
 	return
 }
 
 type HttpResponseReader struct {
 	closer
+	convertError bool
 }
 
 func (self *HttpResponseReader) ReadResponse(req *Request, env *Env) (resp *Response, updates *Env, err error) {
@@ -46,6 +55,13 @@ func (self *HttpResponseReader) ReadResponse(req *Request, env *Env) (resp *Resp
 	client := &http.Client{}
 	httpResp, err = client.Do(r)
 	if err != nil {
+		if self.convertError {
+			resp = new(Response)
+			resp.Status = 500
+			resp.Body = ioutil.NopCloser(&bytes.Buffer{})
+			err = nil
+			return
+		}
 		return
 	}
 	resp = new(Response)
